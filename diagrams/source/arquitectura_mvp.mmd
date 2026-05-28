@@ -1,0 +1,6 @@
+%% TODO: Completar diagrama Mermaid de arquitectura MVP
+flowchart LR
+    Usuario[Usuario gestor] --> Web[Aplicación web]
+    Web --> Backend[Backend parser]
+    Backend --> DB[(Base de datos)]
+    Web --> Export[Exportación CSV/Excel]

@@ -1,0 +1,4 @@
+energy_type,label,enabled_in_mvp,parser_focus,notes
+electricidad,Electricidad,true,true,Parseo PDF incluido en MVP
+gas_natural,Gas natural,true,true,Parseo PDF incluido en MVP
+gasoleo,Gasóleo,true,false,Previsto en modelo; sin foco inicial de parseo

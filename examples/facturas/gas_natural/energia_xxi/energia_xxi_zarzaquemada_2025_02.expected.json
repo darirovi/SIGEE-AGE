@@ -1,0 +1,18 @@
+{
+  "status": "TODO_REVIEW",
+  "source_pdf": "energia_xxi_zarzaquemada_2025_02.pdf",
+  "expected": {
+    "energy_type": "gas_natural",
+    "supplier": "energia_xxi",
+    "invoice_number": "S25CON006941700",
+    "cups_original": "ES0234150035789683GC",
+    "cups_key": "ES0234150035789683GC",
+    "period_start": "2024-12-23",
+    "period_end": "2025-02-27",
+    "computed_year": 2025,
+    "computed_month": 2,
+    "consumption_kwh": 8650,
+    "total_amount_eur": 603.71
+  },
+  "notes": "TODO: colocar el PDF de ejemplo con este nombre o actualizar source_pdf."
+}

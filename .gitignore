@@ -1,0 +1,44 @@
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Entornos
+.env
+.env.*
+!.env.example
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+coverage/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+
+# Datos temporales
+.tmp/
+tmp/
+
+# PDFs reales sensibles: por defecto no versionar PDFs
+# Si quieres versionar ejemplos anonimizados, cambia esta regla de forma explícita.
+*.pdf
+*.PDF
+
+# Exportaciones generadas
+*.xlsx
+*.xls
+*.csv.generated
