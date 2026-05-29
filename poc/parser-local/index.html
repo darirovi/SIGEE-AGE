@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SIGEE-AGE Parser Local PoC</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; margin: 1rem; background: #f9f9f9; color: #222; font-size: 14px; }
+    h1 { color: #333; margin-bottom: 0.5rem; }
+    h2 { color: #555; border-bottom: 1px solid #ddd; padding-bottom: 0.25rem; margin: 1.5rem 0 0.75rem; font-size: 1rem; }
+    .card { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin-top: 0.75rem; }
+    .toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+    .toolbar button, button { background: #0066cc; color: #fff; border: none; border-radius: 4px; padding: 0.4rem 0.8rem; cursor: pointer; font-size: 0.875rem; }
+    .toolbar button:hover, button:hover { background: #0055aa; }
+    button.secondary { background: #666; }
+    button.danger { background: #c00; }
+    button.secondary:hover { background: #555; }
+    button.danger:hover { background: #a00; }
+    input[type="file"] { font-size: 0.875rem; }
+    code { background: #f0f0f0; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.875em; }
+
+    /* Results table */
+    .table-wrap { overflow-x: auto; }
+    .results-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; white-space: nowrap; }
+    .results-table th, .results-table td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
+    .results-table th { background: #e8e8e8; font-weight: 600; position: sticky; top: 0; }
+    .results-table tr:hover { background: #f0f7ff; cursor: pointer; }
+    .results-table tr.selected { background: #e0f0ff; }
+    td .mono { font-family: monospace; font-size: 0.75rem; }
+    .badge { display: inline-block; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.7rem; font-weight: 600; }
+    .badge-ok { background: #d4edda; color: #155724; }
+    .badge-warn { background: #fff3cd; color: #856404; }
+    .badge-error { background: #f8d7da; color: #721c24; }
+    .badge-info { background: #d1ecf1; color: #0c5460; }
+    .cups-controlled { color: #155724; }
+    .cups-uncontrolled { color: #721c24; }
+    .cups-unknown { color: #666; }
+    .warnings-list { list-style: none; padding: 0; margin: 0; }
+    .warnings-list li { font-size: 0.7rem; margin: 0.1rem 0; }
+    .expected-ok { color: #155724; font-weight: bold; }
+    .expected-warn { color: #856404; font-weight: bold; }
+    .expected-na { color: #666; }
+
+    /* Debug panel */
+    #debug-panel { margin-top: 0.75rem; }
+    .debug-section { margin-bottom: 0.75rem; }
+    .debug-section summary { cursor: pointer; font-weight: 600; color: #555; padding: 0.25rem 0; }
+    .debug-section pre { background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 0.5rem; font-size: 0.75rem; overflow-x: auto; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; margin: 0.25rem 0 0; }
+    .debug-warning { display: flex; gap: 0.5rem; padding: 0.2rem 0; border-bottom: 1px solid #eee; font-size: 0.75rem; }
+    .debug-warning .w-code { font-family: monospace; font-weight: 600; min-width: 140px; }
+    .debug-warning .w-level { font-weight: 600; min-width: 50px; }
+    .debug-warning.blocking { color: #c00; }
+    .debug-warning.warning { color: #856404; }
+    .debug-warning.info { color: #0c5460; }
+
+    /* Processing overlay */
+    #processing-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 100; }
+    #processing-overlay.active { display: flex; }
+    #processing-overlay .spinner { background: #fff; padding: 1.5rem 2rem; border-radius: 8px; text-align: center; }
+    .spinner-icon { width: 32px; height: 32px; border: 3px solid #ddd; border-top-color: #0066cc; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <h1>SIGEE-AGE Parser Local PoC</h1>
+
+  <h2>Procesar Facturas PDF</h2>
+  <div class="card">
+    <div class="toolbar">
+      <input type="file" id="fileInput" multiple accept=".pdf" />
+      <button id="processBtn">Procesar PDFs</button>
+      <button id="exportJsonBtn" class="secondary">Descargar JSON</button>
+      <button id="exportCsvBtn" class="secondary">Descargar CSV</button>
+      <button id="clearBtn" class="danger">Limpiar resultados</button>
+    </div>
+  </div>
+
+  <h2>Resultados <span id="result-count"></span></h2>
+  <div class="card">
+    <div class="table-wrap">
+      <table class="results-table" id="resultsTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Archivo</th>
+            <th>Parser</th>
+            <th>Nº Factura</th>
+            <th>CUPS original</th>
+            <th>CUPS normalizado</th>
+            <th>Edificio</th>
+            <th>Tipo energía</th>
+            <th>Periodo</th>
+            <th>Mes computado</th>
+            <th>Consumo (kWh)</th>
+            <th>Importe (€)</th>
+            <th>CUPS</th>
+            <th>Avisos</th>
+            <th>Esperado</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+
+    <div id="debug-panel" style="display:none;">
+      <button id="toggleDebugBtn" class="secondary" style="margin-top:0.5rem;">Ocultar debug</button>
+      <div id="debug-json" class="debug-section">
+        <details open>
+          <summary>JSON resultado (20 campos)</summary>
+          <pre id="debug-json-content"></pre>
+        </details>
+      </div>
+      <div id="debug-raw" class="debug-section">
+        <details open>
+          <summary>Texto raw extraído del PDF</summary>
+          <pre id="debug-raw-content"></pre>
+        </details>
+      </div>
+      <div id="debug-warnings" class="debug-section">
+        <details open>
+          <summary>Detalle de avisos</summary>
+          <div id="debug-warnings-content"></div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div id="processing-overlay">
+    <div class="spinner">
+      <div class="spinner-icon"></div>
+      <div>Procesando...</div>
+    </div>
+  </div>
+
+<script>
+// ============================================================
+// GLOBALS
+// ============================================================
+let controlledCups = {};
+let results = [];
+let expectedCache = {};       // filename_base → parsed JSON
+let selectedIndex = -1;
+let debugVisible = true;
+
+// ============================================================
+// UTILITIES (T-002)
+// ============================================================
+function normalizeCups(cupsRaw) {
+  const original = cupsRaw;
+  const cleaned = cupsRaw.replace(/\s+/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  let normalized = cleaned;
+  if (normalized.length === 22) normalized = normalized.slice(0, -2);
+  return { normalized, wasNormalized: normalized !== cleaned, original };
+}
+
+function parseSpanishNumber(value) {
+  if (value === null || value === undefined) return 'NaN';
+  let s = String(value).trim();
+  s = s.replace(/[€£$]\s*/g, '').replace(/\s*(kWh|m³|KWh|M3|kwH|KWH)\s*/gi, '').trim();
+  const lastComma = s.lastIndexOf(',');
+  const lastDot = s.lastIndexOf('.');
+  let numericStr;
+  if (lastComma !== -1 && (lastDot === -1 || lastComma > lastDot)) {
+    numericStr = s.slice(0, lastComma).replace(/\./g, '') + '.' + s.slice(lastComma + 1).replace(/,/g, '');
+  } else if (lastDot !== -1) {
+    numericStr = s.replace(/,/g, '');
+  } else {
+    numericStr = s.replace(/[^\d\-]/g, '');
+  }
+  const num = Number(numericStr);
+  return isNaN(num) ? 'NaN' : String(num);
+}
+
+const MONTH_MAP = {
+  'enero':'01','febrero':'02','marzo':'03','abril':'04','mayo':'05','junio':'06',
+  'julio':'07','agosto':'08','septiembre':'09','setiembre':'09','octubre':'10',
+  'noviembre':'11','diciembre':'12'
+};
+
+function parseSpanishDate(text) {
+  if (!text) return null;
+  const s = text.trim();
+  const slashMatch = s.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\b/);
+  if (slashMatch) return `${slashMatch[3]}-${slashMatch[2].padStart(2,'0')}-${slashMatch[1].padStart(2,'0')}`;
+  const singleMatch = s.match(/\b(\d{1,2})\s+de\s+([a-záéíóúñü]+)\s+de\s+(\d{4})\b/i);
+  if (singleMatch) {
+    const month = MONTH_MAP[singleMatch[2].toLowerCase()];
+    return month ? `${singleMatch[3]}-${month}-${singleMatch[1].padStart(2,'0')}` : null;
+  }
+  return null;
+}
+
+function parseDateWithDots(text) {
+  if (!text) return null;
+  const m = text.trim().match(/\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/);
+  return m ? `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}` : null;
+}
+
+function computePeriodMonth(periodEnd) {
+  if (!periodEnd) return null;
+  const m = periodEnd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? { year: parseInt(m[1],10), month: parseInt(m[2],10) } : null;
+}
+
+function formatDate(dateObj) {
+  if (!(dateObj instanceof Date) || isNaN(dateObj)) return '';
+  return `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')}`;
+}
+
+function parsePeriodRange(text) {
+  if (!text) return null;
+  const s = text.trim();
+  const slashRange = s.match(/(?:del\s+)?(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(?:al|-)\s+(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/i);
+  if (slashRange) {
+    return {
+      start: `${slashRange[3]}-${slashRange[2].padStart(2,'0')}-${slashRange[1].padStart(2,'0')}`,
+      end: `${slashRange[6]}-${slashRange[5].padStart(2,'0')}-${slashRange[4].padStart(2,'0')}`
+    };
+  }
+  const sp = s.match(/(?:del\s+)?(\d{1,2})\s+de\s+([a-záéíóúñü]+)\s+de\s+(\d{4})\s+a\s+(?:del\s+)?(\d{1,2})\s+de\s+([a-záéíóúñü]+)\s+de\s+(\d{4})/i);
+  if (sp) {
+    const m1 = MONTH_MAP[sp[2].toLowerCase()], m2 = MONTH_MAP[sp[5].toLowerCase()];
+    if (m1 && m2) return { start: `${sp[3]}-${m1}-${sp[1].padStart(2,'0')}`, end: `${sp[6]}-${m2}-${sp[4].padStart(2,'0')}` };
+  }
+  return null;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ============================================================
+// PARSER DETECTION — MARCADORES (T-003)
+// ============================================================
+const MARCADORES = {
+  'iberdrola_electricidad': ['IBERDROLA CLIENTES, S.A.U.','RESUMEN DE FACTURA','PERIODO DE FACTURACIÓN','Identificación punto de suministro (CUPS)','Consumo total de esta factura'],
+  'curenergia_electricidad_pvpc': ['CURENERGÍA','tarifa PVPC','Consumo energía activa','CUPS:','Importe total'],
+  'naturgy_regulada_electricidad': ['Comercializadora Regulada, Gas & Power','DATOS DE LA FACTURA DE ELECTRICIDAD','INFORMACIÓN DE CONSUMO ELÉCTRICO','Código unificado de punto de suministro CUPS','TOTAL IMPORTE FACTURA'],
+  'energia_xxi_gas_natural': ['Energía XXI','INFORMACIÓ DEL CONSUM GAS','GAS NATURAL','Tipus de gas: Gas natural','CUPS:','TOTAL IMPORT FACTURA'],
+  'naturgy_regulada_gas_natural': ['Comercializadora Regulada, Gas & Power','aquí tienes tu factura de gas','Tus datos de suministro de gas','Total a pagar','Consumo kWh','Código CUPS:']
+};
+
+function detectParser(text) {
+  const scores = {};
+  for (const [parser, marcadores] of Object.entries(MARCADORES)) {
+    scores[parser] = marcadores.reduce((cnt, m) => cnt + (text.includes(m) ? 1 : 0), 0);
+  }
+  const rawCandidates = {...scores};
+  let best = 'generic_invoice_parser', bestScore = 0;
+  for (const [p, s] of Object.entries(scores)) { if (s > bestScore) { bestScore = s; best = p; } }
+  if (bestScore < 3) best = 'generic_invoice_parser';
+  return { parserName: best, rawCandidates };
+}
+
+// ============================================================
+// WARNING CODES (T-003)
+// ============================================================
+const BLOCKING_CODES = new Set(['UNCONTROLLED_CUPS','MISSING_PERIOD_START','MISSING_PERIOD_END','MISSING_CONSUMPTION','MISSING_TOTAL_AMOUNT','ENERGY_TYPE_MISMATCH','DUPLICATE_INVOICE','UNREADABLE_PDF']);
+
+function buildWarnings(result, ctrlCups) {
+  const w = [];
+  if (!result.cups_key || !ctrlCups[result.cups_key]) {
+    w.push({ code:'UNCONTROLLED_CUPS', level:'error', message:'CUPS no está en la lista de CUPS controlados', isBlocking:true });
+  }
+  if (result.cups_original && result.cups_key && result.cups_original !== result.cups_key) {
+    w.push({ code:'CUPS_NORMALIZED', level:'info', message:'CUPS fue normalizado', isBlocking:false });
+  }
+  if (result.period_start && result.period_end) {
+    const sm = result.period_start.slice(5,7), em = result.period_end.slice(5,7);
+    if (sm !== em) w.push({ code:'PERIOD_CROSSES_MONTHS', level:'info', message:'El periodo cruza mes', isBlocking:false });
+  }
+  const amt = parseFloat(result.total_amount_eur);
+  if (result.consumption_kwh === null || result.consumption_kwh === '0' || result.consumption_kwh === 0) {
+    w.push({ code:'ZERO_CONSUMPTION', level:'error', message:'Consumo cero o faltante', isBlocking:false });
+  }
+  if (result.total_amount_eur === null || isNaN(amt) || amt <= 0) {
+    w.push({ code:'ZERO_OR_NEGATIVE_AMOUNT', level:'error', message:'Importe cero o negativo', isBlocking:false });
+  }
+  if (result.parser_name === 'generic_invoice_parser') {
+    w.push({ code:'GENERIC_PARSER_USED', level:'warning', message:'Parser genérico usado — extracción puede ser incompleta', isBlocking:false });
+  }
+  if (result.parse_confidence < 0.80) {
+    w.push({ code:'LOW_CONFIDENCE', level:'warning', message:'Confianza de parseo baja (< 80%)', isBlocking:false });
+  }
+  return w;
+}
+
+// ============================================================
+// EMPTY RESULT (T-003)
+// ============================================================
+function createEmptyResult(fileName, rawText) {
+  return {
+    file_name: fileName, parser_name:'unknown', parser_version:'1.0.0', parse_source:'parser_especifico',
+    parse_confidence: 0.0, energy_type:null, supplier_name:null, invoice_number:null,
+    cups_original:null, cups_key:null, period_start:null, period_end:null,
+    computed_year:null, computed_month:null, consumption_kwh:null, total_amount_eur:null,
+    controlled_cups_match:false, building_key:null, building_name:null,
+    raw_candidates:{}, warnings:[], raw_text:rawText
+  };
+}
+
+function calcConfidence(result) {
+  const f = (result.invoice_number?1:0) + (result.period_start?1:0) + (result.period_end?1:0) +
+    (result.cups_original?1:0) + (result.consumption_kwh && result.consumption_kwh!=='NaN'?1:0) +
+    (result.total_amount_eur && result.total_amount_eur!=='NaN'?1:0);
+  return f >= 5 ? 0.95 : 0.70;
+}
+
+// ============================================================
+// PARSERS (T-004, T-005, T-006)
+// ============================================================
+function parseIberdrolaElectricidad(text) {
+  const r = createEmptyResult('', text); r.parser_name='iberdrola_electricidad'; r.energy_type='electricidad'; r.supplier_name='Iberdrola Clientes, S.A.U.';
+  const rc = {};
+  let m;
+  if (m = text.match(/Nº\s*FACTURA[:\s]*([A-Z0-9]+)/im)) { r.invoice_number=m[1]; rc.invoice_number=[m[0]]; }
+  if (m = text.match(/PERIODO\s*DE\s*FACTURACIÓN[:\s]*(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{2}\/\d{4})/im)) {
+    r.period_start=parseSpanishDate(m[1]); r.period_end=parseSpanishDate(m[2]); rc.period=[m[0]];
+  }
+  if (m = text.match(/Identificación punto de suministro \(CUPS\)[:\s]*([A-Z0-9\s]+)/im)) {
+    const raw=m[1].trim(); r.cups_original=raw; r.cups_key=normalizeCups(raw).normalized; rc.cups=[raw];
+  }
+  if (m = text.match(/Consumo total de esta factura[.\s]*([\d\.]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
+  else if (m = text.match(/Total:\s*([\d\.]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
+  if (m = text.match(/TOTAL[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1]); rc.total_amount_eur=[m[0]]; }
+  else if (m = text.match(/TOTAL\s*IMPORTE\s*FACTURA[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1]); rc.total_amount_eur=[m[0]]; }
+  if (r.period_end) { const p=computePeriodMonth(r.period_end); if(p){ r.computed_year=p.year; r.computed_month=p.month; } }
+  r.parse_confidence=calcConfidence(r); r.raw_candidates=rc; return r;
+}
+
+function parseCurenergiaPvpc(text) {
+  const r = createEmptyResult('', text); r.parser_name='curenergia_electricidad_pvpc'; r.energy_type='electricidad'; r.supplier_name='Curenergía';
+  const rc = {}; let m;
+  if (m = text.match(/Nº\s*de\s*factura[:\s]*([A-Z0-9_]+)/im)) { r.invoice_number=m[1]; rc.invoice_number=[m[0]]; }
+  else if (m = text.match(/Nº?\s*factura[:\s]*([A-Z0-9_]+)/im)) { r.invoice_number=m[1]; rc.invoice_number=[m[0]]; }
+  let pm = text.match(/Período:\s*(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{2}\/\d{4})/im);
+  if (!pm) pm = text.match(/Período de consumo[:\s]*(\d{2}\/\d{2}\/\d{4})\s*a\s*(\d{2}\/\d{2}\/\d{4})/im);
+  if (pm) { r.period_start=parseSpanishDate(pm[1]); r.period_end=parseSpanishDate(pm[2]); rc.period=[pm[0]]; }
+  if (m = text.match(/CUPS[:\s]*([A-Z0-9]+)/im)) { const raw=m[1].trim(); r.cups_original=raw; r.cups_key=normalizeCups(raw).normalized; rc.cups=[raw]; }
+  if (m = text.match(/Consumo(?: energía activa)?[:\s]*([\d\.]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
+  else if (m = text.match(/Consumo total[:\s]*([\d\.]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
+  if (m = text.match(/Importe total[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1]); rc.total_amount_eur=[m[0]]; }
+  if (r.period_end) { const p=computePeriodMonth(r.period_end); if(p){ r.computed_year=p.year; r.computed_month=p.month; } }
+  r.parse_confidence=calcConfidence(r); r.raw_candidates=rc; return r;
+}
+
+function parseNaturgyReguladaElectricidad(text) {
+  const r = createEmptyResult('', text); r.parser_name='naturgy_regulada_electricidad'; r.energy_type='electricidad'; r.supplier_name='Comercializadora Regulada, Gas & Power';
+  const rc = {}; let m;
+  if (m = text.match(/Nº\s*factura[:\s]*([A-Z0-9]+)/im)) { r.invoice_number=m[1]; rc.invoice_number=[m[0]]; }
+  const pm = text.match(/(\d{2})\s+de\s+(\w+)\s+de\s+(\d{4})\s+a\s+(\d{2})\s+de\s+(\w+)\s+de\s+(\d{4})/im);
+  if (pm) {
+    const m1=MONTH_MAP[pm[2].toLowerCase()]||MONTH_MAP[pm[2].toLowerCase().replace('í','i')];
+    const m2=MONTH_MAP[pm[5].toLowerCase()]||MONTH_MAP[pm[5].toLowerCase().replace('í','i')];
+    if (m1&&m2) { r.period_start=`${pm[3]}-${m1}-${pm[1]}`; r.period_end=`${pm[6]}-${m2}-${pm[4]}`; rc.period=[pm[0]]; }
+  }
+  if (m = text.match(/Código unificado de punto de suministro CUPS[:\s]*([A-Z0-9]+)/im)) { const raw=m[1].trim(); r.cups_original=raw; r.cups_key=normalizeCups(raw).normalized; rc.cups=[raw]; }
+  if (m = text.match(/Su consumo en el periodo facturado ha sido\s+([\d\.]+)\s+kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
+  if (m = text.match(/TOTAL\s*IMPORTE\s*FACTURA[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1]); rc.total_amount_eur=[m[0]]; }
+  if (r.period_end) { const p=computePeriodMonth(r.period_end); if(p){ r.computed_year=p.year; r.computed_month=p.month; } }
+  r.parse_confidence=calcConfidence(r); r.raw_candidates=rc; return r;
+}
+
+function parseEnergiaXXiGasNatural(text) {
+  const r = createEmptyResult('', text); r.parser_name='energia_xxi_gas_natural'; r.energy_type='gas_natural'; r.supplier_name='Energía XXI Comercializadora de Referencia S.L.U.';
+  const rc = {}; let m;
+  if (m = text.match(/Núm\.\s*de\s*factura[:\s]*([A-Z0-9]+)/im)) { r.invoice_number=m[1]; rc.invoice_number=[m[0]]; }
+  let pm = text.match(/Període\s*facturació[:\s]*del\s+(\d{2})\/(\d{2})\/(\d{4})\s+al\s+(\d{2})\/(\d{2})\/(\d{4})/im);
+  if (!pm) pm = text.match(/del\s+(\d{2})\/(\d{2})\/(\d{4})\s+al\s+(\d{2})\/(\d{2})\/(\d{4})/im);
+  if (pm) { r.period_start=`${pm[3]}-${pm[2]}-${pm[1]}`; r.period_end=`${pm[6]}-${pm[5]}-${pm[4]}`; rc.period=[pm[0]]; }
+  if (m = text.match(/CUPS[:\s]*([A-Z0-9]+)/im)) { const raw=m[1].trim(); r.cups_original=raw; r.cups_key=normalizeCups(raw).normalized; rc.cups=[raw]; }
+  if (m = text.match(/Consum\s+Total\s+([\d\.,]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
+  else if (m = text.match(/Consum\s+([\d\.,]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
+  if (m = text.match(/TOTAL\s*IMPORT\s*FACTURA[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1]); rc.total_amount_eur=[m[0]]; }
+  else if (m = text.match(/IMPORT\s*FACTURA[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1]); rc.total_amount_eur=[m[0]]; }
+  if (r.period_end) { const p=computePeriodMonth(r.period_end); if(p){ r.computed_year=p.year; r.computed_month=p.month; } }
+  r.parse_confidence=calcConfidence(r); r.raw_candidates=rc; return r;
+}
+
+function parseNaturgyReguladaGasNatural(text) {
+  const r = createEmptyResult('', text); r.parser_name='naturgy_regulada_gas_natural'; r.energy_type='gas_natural'; r.supplier_name='Comercializadora Regulada, Gas & Power';
+  const rc = {}; let m;
+  if (m = text.match(/Nº\s*factura[:\s]*([A-Z0-9]+)/im)) { r.invoice_number=m[1]; rc.invoice_number=[m[0]]; }
+  const pm = text.match(/Gas[:\s]*Del\s+(\d{2})\.(\d{2})\.(\d{4})\s+al\s+(\d{2})\.(\d{2})\.(\d{4})/im);
+  if (pm) { r.period_start=`${pm[3]}-${pm[2]}-${pm[1]}`; r.period_end=`${pm[6]}-${pm[5]}-${pm[4]}`; rc.period=[pm[0]]; }
+  if (m = text.match(/Código\s+CUPS[:\s]*([A-Z0-9]{20,22})/im)) { const raw=m[1].trim(); r.cups_original=raw; r.cups_key=normalizeCups(raw).normalized; rc.cups=[raw]; }
+  if (m = text.match(/Consumo kWh[:\s]*([\d\.]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
+  else if (m = text.match(/(\d+)\s*m³\s*x\s*[\d\,\.]+\s*kWh\*\s*([\d\.]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[2]); rc.consumption_kwh=[m[0]]; }
+  if (m = text.match(/Total\s+a\s+pagar\s+([\d\.,]+)€?/im)) { r.total_amount_eur=parseSpanishNumber(m[1]); rc.total_amount_eur=[m[0]]; }
+  if (r.period_end) { const p=computePeriodMonth(r.period_end); if(p){ r.computed_year=p.year; r.computed_month=p.month; } }
+  r.parse_confidence=calcConfidence(r); r.raw_candidates=rc; return r;
+}
+
+function parseGenericInvoice(text) {
+  const r = createEmptyResult('', text); r.parser_name='generic_invoice_parser'; r.parse_source='parser_generico'; r.parse_confidence=0.50; r.energy_type=null; r.supplier_name=null; r.requires_visual_review=true;
+  const rc = {};
+  const cupsCompact = text.match(/(ES[0-9]{20,22})/im);
+  const cupsSpaced = text.match(/(ES[0-9]{4}\s[0-9]{4}\s[0-9]{4}\s[0-9]{4}\s[A-Z0-9]{2,3})/im);
+  if (cupsCompact) { const raw=cupsCompact[1]; r.cups_original=raw; r.cups_key=normalizeCups(raw).normalized; rc.cups=[raw]; }
+  else if (cupsSpaced) { const raw=cupsSpaced[1]; r.cups_original=raw; r.cups_key=normalizeCups(raw).normalized; rc.cups=[raw]; }
+  const invM = text.match(/(?:Nº|Núm|Num|Factura)[:\.\s]*([A-Z0-9\-]+)/im);
+  if (invM) { r.invoice_number=invM[1]; rc.invoice_number=[invM[0]]; }
+  let pm = text.match(/(\d{2})\/(\d{2})\/(\d{4})\s*[-–]\s*(\d{2})\/(\d{2})\/(\d{4})/im);
+  if (pm) { r.period_start=`${pm[3]}-${pm[2]}-${pm[1]}`; r.period_end=`${pm[6]}-${pm[5]}-${pm[4]}`; rc.period=[pm[0]]; }
+  else { const dpm = text.match(/(\d{2})\.(\d{2})\.(\d{4})\s*[-–]\s*(\d{2})\.(\d{2})\.(\d{4})/im); if (dpm) { r.period_start=`${dpm[3]}-${dpm[2]}-${dpm[1]}`; r.period_end=`${dpm[6]}-${dpm[5]}-${dpm[4]}`; rc.period=[dpm[0]]; } }
+  const allKwh = text.match(/([\d\.,]+)\s*kWh/im)||[];
+  const kwhVals = allKwh.map(m=>parseSpanishNumber(m)).filter(v=>v!=='NaN');
+  if (kwhVals.length>0) { rc.consumption_kwh=allKwh.map(m=>m); r.consumption_kwh=kwhVals.reduce((a,b)=>parseFloat(b)>parseFloat(a)?b:a); }
+  const allEur = text.match(/([\d\.,]+)\s*€/im)||[];
+  const eurVals = allEur.map(m=>parseSpanishNumber(m.replace(/€/g,'').trim())).filter(v=>v!=='NaN');
+  if (eurVals.length>0) { rc.total_amount_eur=allEur.map(m=>m); r.total_amount_eur=eurVals.reduce((a,b)=>parseFloat(b)>parseFloat(a)?b:a); }
+  const lt = text.toLowerCase();
+  if (/\b(electricidad|energ[ií]a\s+activa|potencia|kWh)\b/.test(lt)) { r.energy_type='electricidad'; rc.energy_type=['electricidad']; }
+  else if (/\b(gas\s*natural|gas|m[m³])\b/.test(lt)) { r.energy_type='gas_natural'; rc.energy_type=['gas_natural']; }
+  else if (/\b(gasoil|gasoil[eo])\b/.test(lt)) { r.energy_type='gasoleo'; rc.energy_type=['gasoleo']; }
+  if (r.period_end) { const p=computePeriodMonth(r.period_end); if(p){ r.computed_year=p.year; r.computed_month=p.month; } }
+  const f = (r.invoice_number?1:0)+(r.period_start?1:0)+(r.period_end?1:0)+(r.cups_original?1:0)+(r.consumption_kwh&&r.consumption_kwh!=='NaN'?1:0)+(r.total_amount_eur&&r.total_amount_eur!=='NaN'?1:0);
+  r.parse_confidence = f>=5 ? 0.65 : f>=3 ? 0.50 : 0.30;
+  r.warnings = [];
+  if (kwhVals.length > 1) { r.warnings.push({ code:'MULTIPLE_CONSUMPTION_CANDIDATES', level:'warning', message:`Se encontraron ${kwhVals.length} candidatos de consumo`, isBlocking:false }); }
+  if (eurVals.length > 1) { r.warnings.push({ code:'MULTIPLE_AMOUNT_CANDIDATES', level:'warning', message:`Se encontraron ${eurVals.length} candidatos de importe`, isBlocking:false }); }
+  r.raw_candidates=rc; return r;
+}
+
+// ============================================================
+// PDF EXTRACTION (T-003)
+// ============================================================
+async function extractPdfText(file) {
+  try {
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+    let txt = '';
+    for (let i=1; i<=pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      txt += content.items.map(item=>item.str).join(' ') + '\n';
+    }
+    return txt;
+  } catch(e) { return ''; }
+}
+
+// ============================================================
+// EXPECTED JSON VALIDATION (T-007)
+// ============================================================
+function getExpectedFilename(result) {
+  // Derive expected JSON filename from result file_name
+  // e.g. iberdrola_electricidad_vallehermoso_2025_01.pdf → iberdrola_electricidad_vallehermoso_2025_01.json
+  return result.file_name.replace(/\.pdf$/i, '.json');
+}
+
+async function loadExpectedForResult(result) {
+  const key = getExpectedFilename(result);
+  if (expectedCache[key] !== undefined) return expectedCache[key];
+  try {
+    const resp = await fetch(`../examples/parser_expected/${key}`);
+    if (!resp.ok) { expectedCache[key] = null; return null; }
+    expectedCache[key] = await resp.json();
+    return expectedCache[key];
+  } catch { expectedCache[key] = null; return null; }
+}
+
+const VALIDATION_FIELDS = ['parser_name','energy_type','invoice_number','cups_key','period_start','period_end','computed_year','computed_month','consumption_kwh','total_amount_eur'];
+
+async function validateAgainstExpected(result) {
+  const expected = await loadExpectedForResult(result);
+  if (!expected) return { status: 'na', diffs: [] };
+  const diffs = [];
+  for (const field of VALIDATION_FIELDS) {
+    const a = String(result[field] ?? '');
+    const b = String(expected[field] ?? '');
+    if (a !== b) diffs.push({ field, actual: a, expected: b });
+  }
+  return { status: diffs.length === 0 ? 'ok' : 'warn', diffs };
+}
+
+// ============================================================
+// PROCESS FILES (T-003)
+// ============================================================
+async function processFiles(files) {
+  showOverlay(true);
+  for (const file of files) {
+    const rawText = await extractPdfText(file);
+    const result = createEmptyResult(file.name, rawText);
+    if (!rawText || rawText.trim().length < 20) {
+      result.warnings.push({ code:'UNREADABLE_PDF', level:'error', message:'PDF sin texto extraíble', isBlocking:true });
+      result.parse_confidence = 0;
+      results.push(result);
+      await renderResults();
+      continue;
+    }
+    const { parserName, rawCandidates } = detectParser(rawText);
+    let parsed;
+    if (parserName === 'iberdrola_electricidad') parsed = parseIberdrolaElectricidad(rawText);
+    else if (parserName === 'curenergia_electricidad_pvpc') parsed = parseCurenergiaPvpc(rawText);
+    else if (parserName === 'naturgy_regulada_electricidad') parsed = parseNaturgyReguladaElectricidad(rawText);
+    else if (parserName === 'naturgy_regulada_gas_natural') parsed = parseNaturgyReguladaGasNatural(rawText);
+    else if (parserName === 'energia_xxi_gas_natural') parsed = parseEnergiaXXiGasNatural(rawText);
+    else parsed = parseGenericInvoice(rawText);
+    Object.assign(result, parsed);
+    result.file_name = file.name;
+    result.raw_candidates = rawCandidates;
+    result.warnings = buildWarnings(result, controlledCups);
+    if (result.cups_key && controlledCups[result.cups_key]) {
+      result.controlled_cups_match = true;
+      result.building_key = controlledCups[result.cups_key].building_key;
+      result.building_name = controlledCups[result.cups_key].building_name;
+    }
+    result._validation = await validateAgainstExpected(result);
+    results.push(result);
+    await renderResults();
+  }
+  showOverlay(false);
+}
+
+// ============================================================
+// UI — RESULTS TABLE (T-007)
+// ============================================================
+function cupsStatus(result) {
+  if (!result.cups_key) return { cls:'cups-unknown', icon:'⚪', label:'desconocido' };
+  return controlledCups[result.cups_key]
+    ? { cls:'cups-controlled', icon:'🟢', label:'controlado' }
+    : { cls:'cups-uncontrolled', icon:'🔴', label:'no controlado' };
+}
+
+function warningBadge(result) {
+  const blocking = result.warnings.filter(w=>w.isBlocking).length;
+  const nonBlocking = result.warnings.length - blocking;
+  if (result.warnings.length === 0) return '<span class="badge badge-ok">Sin avisos</span>';
+  if (blocking > 0) return `<span class="badge badge-error">${blocking} bloq., ${nonBlocking} no bloq.</span>`;
+  return `<span class="badge badge-warn">${result.warnings.length} aviso(s)</span>`;
+}
+
+function expectedBadge(validation) {
+  if (!validation || validation.status === 'na') return '<span class="expected-na">N/A</span>';
+  if (validation.status === 'ok') return '<span class="expected-ok">✅ OK</span>';
+  return `<span class="expected-warn" title="${validation.diffs.map(d=>`${d.field}: ${d.actual} ≠ ${d.expected}`).join(' | ')}">⚠️ ${validation.diffs.length} dif.</span>`;
+}
+
+function buildRow(result, idx) {
+  const cs = cupsStatus(result);
+  const period = `${result.period_start||'—'} → ${result.period_end||'—'}`;
+  const month = result.computed_year && result.computed_month ? `${result.computed_year}-${String(result.computed_month).padStart(2,'0')}` : '—';
+  return [
+    idx + 1,
+    escapeHtml(result.file_name),
+    escapeHtml(result.parser_name),
+    escapeHtml(result.invoice_number || '—'),
+    escapeHtml(result.cups_original || '—'),
+    escapeHtml(result.cups_key || '—'),
+    escapeHtml(result.building_name || result.building_key || '—'),
+    escapeHtml(result.energy_type || '—'),
+    period,
+    month,
+    result.consumption_kwh !== null && result.consumption_kwh !== 'NaN' ? escapeHtml(String(result.consumption_kwh)) : '—',
+    result.total_amount_eur !== null && result.total_amount_eur !== 'NaN' ? escapeHtml(String(result.total_amount_eur)) : '—',
+    `<span class="${cs.cls}">${cs.icon} ${cs.label}</span>`,
+    warningBadge(result),
+    expectedBadge(result._validation)
+  ];
+}
+
+async function renderResults() {
+  const tbody = document.getElementById('resultsBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    const tr = document.createElement('tr');
+    if (i === selectedIndex) tr.classList.add('selected');
+    const cells = buildRow(r, i);
+    tr.innerHTML = '<td>' + cells.join('</td><td>') + '</td>';
+    tr.addEventListener('click', () => selectRow(i));
+    tbody.appendChild(tr);
+  }
+  document.getElementById('result-count').textContent = results.length > 0 ? `(${results.length})` : '';
+}
+
+// ============================================================
+// DEBUG PANEL (T-007)
+// ============================================================
+async function selectRow(idx) {
+  selectedIndex = idx;
+  await renderResults();
+  const r = results[idx];
+  if (!r) return;
+  document.getElementById('debug-panel').style.display = 'block';
+  document.getElementById('debug-json-content').textContent = JSON.stringify(r, null, 2);
+  document.getElementById('debug-raw-content').textContent = r.raw_text || '(sin texto)';
+  const wc = document.getElementById('debug-warnings-content');
+  if (r.warnings.length === 0) {
+    wc.innerHTML = '<div style="font-size:0.75rem;color:#666;">Sin avisos</div>';
+  } else {
+    wc.innerHTML = r.warnings.map(w =>
+      `<div class="debug-warning ${w.isBlocking?'blocking':w.level}">
+        <span class="w-code">${escapeHtml(w.code)}</span>
+        <span class="w-level">${w.level.toUpperCase()}</span>
+        <span>${escapeHtml(w.message)}</span>
+        <span>${w.isBlocking?' [BLOQ]':''}</span>
+      </div>`
+    ).join('');
+  }
+}
+
+document.getElementById('toggleDebugBtn')?.addEventListener('click', () => {
+  debugVisible = !debugVisible;
+  const panel = document.getElementById('debug-panel');
+  const btn = document.getElementById('toggleDebugBtn');
+  if (!debugVisible) {
+    panel.style.display = 'none';
+    btn.textContent = 'Mostrar debug';
+  } else {
+    if (selectedIndex >= 0) panel.style.display = 'block';
+    btn.textContent = 'Ocultar debug';
+  }
+});
+
+// ============================================================
+// EXPORT FUNCTIONS (T-007)
+// ============================================================
+function exportJson() {
+  if (results.length === 0) return;
+  const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `parsed-invoices-${Date.now()}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportCsv() {
+  if (results.length === 0) return;
+  const headers = ['file_name','parser_name','energy_type','invoice_number','cups_original','cups_key','building_key','period_start','period_end','computed_year','computed_month','consumption_kwh','total_amount_eur','controlled_cups_match','warnings_count','has_blocking_warnings'];
+  const rows = results.map(r => {
+    const warningsStr = r.warnings.map(w=>w.code).join(';');
+    const hasBlocking = r.warnings.some(w=>w.isBlocking);
+    return [
+      r.file_name, r.parser_name, r.energy_type||'', r.invoice_number||'',
+      r.cups_original||'', r.cups_key||'', r.building_key||'',
+      r.period_start||'', r.period_end||'', r.computed_year||'', r.computed_month||'',
+      r.consumption_kwh||'', r.total_amount_eur||'',
+      r.controlled_cups_match, r.warnings.length, hasBlocking
+    ].map(v => {
+      const s = String(v);
+      return s.includes(',')||s.includes('"')||s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s;
+    }).join(',');
+  });
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `parsed-invoices-${Date.now()}.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// CLEAR FUNCTION (T-007)
+// ============================================================
+function clearResults() {
+  results = [];
+  selectedIndex = -1;
+  expectedCache = {};
+  document.getElementById('resultsBody').innerHTML = '';
+  document.getElementById('debug-panel').style.display = 'none';
+  document.getElementById('result-count').textContent = '';
+}
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+function showOverlay(show) {
+  document.getElementById('processing-overlay').classList.toggle('active', show);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+  try {
+    const resp = await fetch('./sample-data/controlled-cups.json');
+    const txt = await resp.text();
+    // Strip comments (JSON-with-comments from the file header)
+    const jsonStr = txt.replace(/#.*$/gm, '').replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+    controlledCups = JSON.parse(jsonStr);
+  } catch(e) { /* keep empty */ }
+
+  document.getElementById('processBtn').addEventListener('click', () => {
+    const fi = document.getElementById('fileInput');
+    if (fi.files.length > 0) processFiles(fi.files);
+  });
+  document.getElementById('exportJsonBtn').addEventListener('click', exportJson);
+  document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
+  document.getElementById('clearBtn').addEventListener('click', clearResults);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

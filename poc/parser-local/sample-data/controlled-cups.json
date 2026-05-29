@@ -1,0 +1,170 @@
+# Controlled CUPS — Sample Data
+
+This file contains a subset of known, controlled CUPS used in the SIGEE-AGE project.
+
+## Source
+
+Converted from `data/seed/cups_controlados.csv`. All 23 entries are included.
+
+## Schema
+
+```json
+{
+  "<cups_key>": {
+    "building_key": "<short uppercase code>",
+    "building_name": "<display name>",
+    "energy_type": "electricidad | gas_natural",
+    "supplier": "<supplier full name>"
+  }
+}
+```
+
+## Usage
+
+```js
+// In index.html, load as a static JSON file:
+const controlledCups = await fetch('./sample-data/controlled-cups.json').then(r => r.json());
+
+// Lookup:
+const info = controlledCups['ES0022000006212876CB'];
+// → { building_key: 'VALLEHERMOSO', building_name: 'Vallehermoso', energy_type: 'electricidad', supplier: 'Iberdrola' }
+```
+
+## Full Data
+
+```json
+{
+  "ES0021000004279670GB": {
+    "building_key": "FUENLABRADA",
+    "building_name": "Fuenlabrada",
+    "energy_type": "electricidad",
+    "supplier": "Iberdrola"
+  },
+  "ES0021000004554548HQ": {
+    "building_key": "VILLAVERDE",
+    "building_name": "Villaverde",
+    "energy_type": "electricidad",
+    "supplier": "Iberdrola"
+  },
+  "ES0021000004554527VH": {
+    "building_key": "VILLAVERDE",
+    "building_name": "Villaverde",
+    "energy_type": "electricidad",
+    "supplier": "Iberdrola"
+  },
+  "ES0021000004554549HV": {
+    "building_key": "VILLAVERDE",
+    "building_name": "Villaverde",
+    "energy_type": "electricidad",
+    "supplier": "Iberdrola"
+  },
+  "ES0021000004467019PW": {
+    "building_key": "ZARZAQUEMADA",
+    "building_name": "Zarzaquemada",
+    "energy_type": "electricidad",
+    "supplier": "Iberdrola"
+  },
+  "ES0021000004467009FS": {
+    "building_key": "ZARZAQUEMADA",
+    "building_name": "Zarzaquemada",
+    "energy_type": "electricidad",
+    "supplier": "Iberdrola"
+  },
+  "ES0021000004467010FQ": {
+    "building_key": "ZARZAQUEMADA",
+    "building_name": "Zarzaquemada",
+    "energy_type": "electricidad",
+    "supplier": "Iberdrola"
+  },
+  "ES0021000004467020PA": {
+    "building_key": "ZARZAQUEMADA",
+    "building_name": "Zarzaquemada",
+    "energy_type": "electricidad",
+    "supplier": "Iberdrola"
+  },
+  "ES0021000004467060DC": {
+    "building_key": "ZARZAQUEMADA",
+    "building_name": "Zarzaquemada",
+    "energy_type": "electricidad",
+    "supplier": "Iberdrola"
+  },
+  "ES0022000006212875CX": {
+    "building_key": "VALLEHERMOSO",
+    "building_name": "Vallehermoso",
+    "energy_type": "electricidad",
+    "supplier": "Iberdrola"
+  },
+  "ES0022000006212876CB": {
+    "building_key": "VALLEHERMOSO",
+    "building_name": "Vallehermoso",
+    "energy_type": "electricidad",
+    "supplier": "Iberdrola"
+  },
+  "ES0022000006212925EZ": {
+    "building_key": "VALLEHERMOSO",
+    "building_name": "Vallehermoso",
+    "energy_type": "electricidad",
+    "supplier": "Iberdrola"
+  },
+  "ES0022000006290815MA": {
+    "building_key": "UPROSE",
+    "building_name": "Uprose",
+    "energy_type": "electricidad",
+    "supplier": "Comercializadora Regulada, Gas & Power, S.A."
+  },
+  "ES0022000006290850YS": {
+    "building_key": "UPROSE",
+    "building_name": "Uprose",
+    "energy_type": "electricidad",
+    "supplier": "Comercializadora Regulada, Gas & Power, S.A."
+  },
+  "ES0022000006290851YQ": {
+    "building_key": "UPROSE",
+    "building_name": "Uprose",
+    "energy_type": "electricidad",
+    "supplier": "Comercializadora Regulada, Gas & Power, S.A."
+  },
+  "ES0022000007963231SC": {
+    "building_key": "UPROSE",
+    "building_name": "Uprose",
+    "energy_type": "electricidad",
+    "supplier": "Comercializadora Regulada, Gas & Power, S.A."
+  },
+  "ES0022000008295931ZW": {
+    "building_key": "UPROSE",
+    "building_name": "Uprose",
+    "energy_type": "electricidad",
+    "supplier": "Comercializadora Regulada, Gas & Power, S.A."
+  },
+  "ES0234150035784209LC": {
+    "building_key": "ZARZAQUEMADA",
+    "building_name": "Zarzaquemada",
+    "energy_type": "gas_natural",
+    "supplier": "Energía XXI Comercializadora de Referencia S.L.U."
+  },
+  "ES0234150069842817LK": {
+    "building_key": "ZARZAQUEMADA",
+    "building_name": "Zarzaquemada",
+    "energy_type": "gas_natural",
+    "supplier": "Energía XXI Comercializadora de Referencia S.L.U."
+  },
+  "ES0234150069842931RC": {
+    "building_key": "ZARZAQUEMADA",
+    "building_name": "Zarzaquemada",
+    "energy_type": "gas_natural",
+    "supplier": "Energía XXI Comercializadora de Referencia S.L.U."
+  },
+  "ES0234150068773697LX": {
+    "building_key": "ZARZAQUEMADA",
+    "building_name": "Zarzaquemada",
+    "energy_type": "gas_natural",
+    "supplier": "Energía XXI Comercializadora de Referencia S.L.U."
+  },
+  "ES0234150035789683GC": {
+    "building_key": "ZARZAQUEMADA",
+    "building_name": "Zarzaquemada",
+    "energy_type": "gas_natural",
+    "supplier": "Energía XXI Comercializadora de Referencia S.L.U."
+  }
+}
+```
