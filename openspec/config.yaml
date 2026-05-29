@@ -1,0 +1,48 @@
+# OpenSpec Configuration — SIGEE-AGE
+schema: spec-driven
+
+context: |
+  Tech stack: Next.js + TypeScript + Tailwind + Supabase (frontend), Python + FastAPI + Pydantic + PyMuPDF (parser backend), Supabase PostgreSQL + Auth + Storage.
+  Architecture: Frontend speaks to Supabase DB directly; FastAPI parser backend handles PDF extraction only; business logic in frontend/services.
+  Testing: pytest planned for backend but not yet implemented (pre-implementation stage); no test runner detected.
+  Style: Spanish documentation; code/identifiers in English; SDD workflow for all non-trivial changes.
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    - Follow existing code patterns
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
+
+testing:
+  strict_tdd: false
+  reason: "No test runner detected — project is in pre-implementation documentation stage. pytest is planned per docs/06_arquitectura_tecnica.md but not yet set up."
+  capabilities:
+    test_runner: null
+    unit: false
+    integration: false
+    e2e: false
+    coverage: false
+    linter: null
+    type_checker: null
+    formatter: null
+  planned:
+    - "pytest for Python backend parser tests"
+    - "Next.js/React testing library for frontend unit tests"
+    - "Playwright for E2E when UI is implemented"

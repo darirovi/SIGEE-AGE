@@ -1,7 +1,23 @@
-cups_key,cups_original,building_key,energy_type,control_from_month,control_to_month,status,notes
-TODO,TODO,TODO_FUENLABRADA,electricidad,TODO,,activo,TODO: completar desde pantallazos
-TODO,TODO,TODO_VILLAVERDE,electricidad,TODO,,activo,TODO: completar desde pantallazos
-TODO,TODO,TODO_ZARZAQUEMADA,electricidad,TODO,,activo,TODO: completar desde pantallazos
-TODO,TODO,TODO_VALLEHERMOSO,electricidad,TODO,,activo,TODO: completar desde pantallazos
-TODO,TODO,TODO_UPROSE,electricidad,TODO,,activo,TODO: completar desde pantallazos
-TODO,TODO,TODO_ZARZAQUEMADA,gas_natural,TODO,,activo,TODO: completar desde pantallazo gas
+building_key,energy_type_code,cups_original,cups_key,description,supplier_name,tariff,control_from_year,control_from_month,control_to_year,control_to_month,status,source,notes
+FUENLABRADA,electricidad,ES0021000004279670GB,ES0021000004279670GB,,Iberdrola,2.0A,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 9,2 kW."
+VILLAVERDE,electricidad,ES0021000004554548HQ,ES0021000004554548HQ,,Iberdrola,2.0A,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 9,5 kW."
+VILLAVERDE,electricidad,ES0021000004554527VH,ES0021000004554527VH,,Iberdrola,2.0A,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 3,3 kW."
+VILLAVERDE,electricidad,ES0021000004554549HV,ES0021000004554549HV,,Iberdrola,2.1A,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 11,4 kW."
+ZARZAQUEMADA,electricidad,ES0021000004467019PW,ES0021000004467019PW,,Iberdrola,2.0A,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 4,4 kW."
+ZARZAQUEMADA,electricidad,ES0021000004467009FS,ES0021000004467009FS,,Iberdrola,2.0A,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 6,6 kW."
+ZARZAQUEMADA,electricidad,ES0021000004467010FQ,ES0021000004467010FQ,,Iberdrola,2.0A,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 4,4 kW."
+ZARZAQUEMADA,electricidad,ES0021000004467020PA,ES0021000004467020PA,,Iberdrola,2.0A,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 3,4 kW."
+ZARZAQUEMADA,electricidad,ES0021000004467060DC,ES0021000004467060DC,,Iberdrola,2.0A,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 1,0 kW."
+VALLEHERMOSO,electricidad,ES0022000006212875CX,ES0022000006212875CX,,Iberdrola,2.0A,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 3,0 kW."
+VALLEHERMOSO,electricidad,ES0022000006212876CB,ES0022000006212876CB,,Iberdrola,2.0A,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 2,2 kW. CUPS usado en el ejemplo real Iberdrola electricidad."
+VALLEHERMOSO,electricidad,ES0022000006212925EZ,ES0022000006212925EZ,,Iberdrola,2.0A,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 4,4 kW."
+UPROSE,electricidad,ES0022000006290815MA,ES0022000006290815MA,,"Comercializadora Regulada, Gas & Power, S.A.",2.0TD,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 9,9 kW."
+UPROSE,electricidad,ES0022000006290850YS,ES0022000006290850YS,,"Comercializadora Regulada, Gas & Power, S.A.",2.0TD,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 3,3 kW. CUPS usado en el ejemplo real Naturgy / Comercializadora Regulada electricidad. La factura puede aparecer con sufijo extendido ES0022000006290850YS1P."
+UPROSE,electricidad,ES0022000006290851YQ,ES0022000006290851YQ,,"Comercializadora Regulada, Gas & Power, S.A.",3.0TD,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 15,0 kW."
+UPROSE,electricidad,ES0022000007963231SC,ES0022000007963231SC,,"Comercializadora Regulada, Gas & Power, S.A.",3.0TD,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 67,0 kW."
+UPROSE,electricidad,ES0022000008295931ZW,ES0022000008295931ZW,,"Comercializadora Regulada, Gas & Power, S.A.",3.0TD,2025,1,,,activo,pantallazo_sigee,"Potencia contratada visible: 115,0 kW."
+ZARZAQUEMADA,gas_natural,ES0234150035784209LC,ES0234150035784209LC,,"Energía XXI Comercializadora de Referencia S.L.U.",RL.3,2025,1,,,activo,pantallazo_sigee,
+ZARZAQUEMADA,gas_natural,ES0234150069842817LK,ES0234150069842817LK,,"Energía XXI Comercializadora de Referencia S.L.U.",RL.3,2025,1,,,activo,pantallazo_sigee,
+ZARZAQUEMADA,gas_natural,ES0234150069842931RC,ES0234150069842931RC,,"Energía XXI Comercializadora de Referencia S.L.U.",RL.3,2025,1,,,activo,pantallazo_sigee,
+ZARZAQUEMADA,gas_natural,ES0234150068773697LX,ES0234150068773697LX,,"Energía XXI Comercializadora de Referencia S.L.U.",RL.3,2025,1,,,activo,pantallazo_sigee,
+ZARZAQUEMADA,gas_natural,ES0234150035789683GC,ES0234150035789683GC,,"Energía XXI Comercializadora de Referencia S.L.U.",RL.1,2025,1,,,activo,pantallazo_sigee,"CUPS usado en el ejemplo real Energía XXI gas natural. La tarifa/peaje del PDF puede diferir de la visible en SIGEE-AGE; revisar maestro si procede."

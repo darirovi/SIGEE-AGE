@@ -1,0 +1,46 @@
+{
+"parser_name": "curenergia_electricidad_pvpc",
+"parser_version": "1.0.0",
+"parse_source": "parser_especifico",
+"parse_confidence": 0.98,
+"energy_type": "electricidad",
+"supplier_name": "Curenergía Comercializador de Último Recurso S.A.U.",
+"invoice_number": "09230531040000010",
+"cups_original": "ES 0021 0000 0427 9670 GB",
+"cups_key": "ES0021000004279670GB",
+"period_start": "2023-04-03",
+"period_end": "2023-04-12",
+"computed_year": 2023,
+"computed_month": 4,
+"consumption_kwh": "16",
+"total_amount_eur": "9.77",
+"raw_candidates": {
+"invoice_number": [
+"09230531040000010"
+],
+"period": [
+"Periodo de consumo: 3 de abril de 2023 a 12 de abril de 2023"
+],
+"consumption_kwh": [
+"Su consumo en el periodo facturado ha sido: 16 kWh",
+"Consumo en P1: 6 kWh",
+"Consumo en P2: 4 kWh",
+"Consumo en P3: 6 kWh",
+"16 kWh x 0,104375 €/kWh"
+],
+"total_amount_eur": [
+"IMPORTE FACTURA: 9,77 €",
+"IMPORTE DOCUMENTO 9,77 €",
+"TOTAL IMPORTE FACTURA 9,77 €"
+],
+"cups": [
+"ES 0021 0000 0427 9670 GB"
+],
+"energy_type": [
+"INFORMACIÓN DEL CONSUMO ELÉCTRICO",
+"PVPC - MERCADO REGULADO",
+"Peajes de transporte y distribución : 2.0TD"
+]
+},
+"warnings": []
+}

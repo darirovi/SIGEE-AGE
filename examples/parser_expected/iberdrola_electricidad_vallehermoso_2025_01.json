@@ -1,0 +1,36 @@
+{
+  "parser_name": "iberdrola_electricidad",
+  "parser_version": "1.0.0",
+  "parse_source": "parser_especifico",
+  "parse_confidence": 0.98,
+  "energy_type": "electricidad",
+  "supplier_name": "Iberdrola Clientes, S.A.U.",
+  "invoice_number": "21250131040000158",
+  "cups_original": "ES 0022 0000 0621 2876 CB",
+  "cups_key": "ES0022000006212876CB",
+  "period_start": "2024-12-10",
+  "period_end": "2025-01-15",
+  "computed_year": 2025,
+  "computed_month": 1,
+  "consumption_kwh": "88",
+  "total_amount_eur": "23.70",
+  "raw_candidates": {
+    "invoice_number": [
+      "21250131040000158"
+    ],
+    "period": [
+      "10/12/2024 - 15/01/2025"
+    ],
+    "consumption_kwh": [
+      "88 kWh",
+      "Total: 88 kWh"
+    ],
+    "total_amount_eur": [
+      "TOTAL 23,70€"
+    ],
+    "cups": [
+      "ES 0022 0000 0621 2876 CB"
+    ]
+  },
+  "warnings": []
+}

@@ -1,0 +1,40 @@
+{
+"parser_name": "iberdrola_electricidad",
+"parser_version": "1.0.0",
+"parse_source": "parser_especifico",
+"parse_confidence": 0.98,
+"energy_type": "electricidad",
+"supplier_name": "Iberdrola Clientes, S.A.U.",
+"invoice_number": "21241031040000282",
+"cups_original": "ES 0021 0000 0427 9670 GB",
+"cups_key": "ES0021000004279670GB",
+"period_start": "2024-09-11",
+"period_end": "2024-10-15",
+"computed_year": 2024,
+"computed_month": 10,
+"consumption_kwh": "132",
+"total_amount_eur": "50.33",
+"raw_candidates": {
+"invoice_number": [
+"21241031040000282"
+],
+"period": [
+"11/09/2024 - 15/10/2024"
+],
+"consumption_kwh": [
+"132 kWh",
+"Total: 132 kWh",
+"Punta: 55 kWh",
+"Llano: 36 kWh",
+"Valle: 41 kWh"
+],
+"total_amount_eur": [
+"TOTAL 50,33€",
+"TOTAL IMPORTE FACTURA 50,33 €"
+],
+"cups": [
+"ES 0021 0000 0427 9670 GB"
+]
+},
+"warnings": []
+}

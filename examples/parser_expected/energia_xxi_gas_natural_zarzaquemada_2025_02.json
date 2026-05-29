@@ -1,0 +1,41 @@
+{
+"parser_name": "energia_xxi_gas_natural",
+"parser_version": "1.0.0",
+"parse_source": "parser_especifico",
+"parse_confidence": 0.98,
+"energy_type": "gas_natural",
+"supplier_name": "Energía XXI Comercializadora de Referencia S.L.U.",
+"invoice_number": "S25CON006941700",
+"cups_original": "ES0234150035789683GC",
+"cups_key": "ES0234150035789683GC",
+"period_start": "2024-12-23",
+"period_end": "2025-02-27",
+"computed_year": 2025,
+"computed_month": 2,
+"consumption_kwh": "8650",
+"total_amount_eur": "603.71",
+"raw_candidates": {
+"invoice_number": [
+"S25CON006941700"
+],
+"period": [
+"del 23/12/2024 al 27/02/2025"
+],
+"consumption_kwh": [
+"Consum Total 8.650,000 kWh",
+"Consum 8.650,00 kWh"
+],
+"total_amount_eur": [
+"TOTAL IMPORT FACTURA 603,71 €",
+"IMPORT FACTURA: 603,71 €"
+],
+"cups": [
+"ES0234150035789683GC"
+],
+"energy_type": [
+"Tipus de gas: Gas natural",
+"GAS NATURAL"
+]
+},
+"warnings": []
+}

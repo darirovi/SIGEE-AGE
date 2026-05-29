@@ -1,0 +1,48 @@
+{
+"parser_name": "naturgy_regulada_gas_natural",
+"parser_version": "1.0.0",
+"parse_source": "parser_especifico",
+"parse_confidence": 0.98,
+"energy_type": "gas_natural",
+"supplier_name": "Comercializadora Regulada, Gas & Power, S.A.",
+"invoice_number": "FE22137025647128",
+"cups_original": "ES0217020101041874FT",
+"cups_key": "ES0217020101041874FT",
+"period_start": "2022-09-10",
+"period_end": "2022-11-07",
+"computed_year": 2022,
+"computed_month": 11,
+"consumption_kwh": "317",
+"total_amount_eur": "63.61",
+"raw_candidates": {
+"invoice_number": [
+"FE22137025647128"
+],
+"period": [
+"Gas: Del 10.09.2022 al 07.11.2022",
+"Período de 10.09.2022 a 30.09.2022",
+"Período de 01.10.2022 a 07.11.2022"
+],
+"consumption_kwh": [
+"Consumo kWh: 30 m³ x 10,567 kWh* 317 kWh",
+"317 kWh",
+"113 kWh",
+"204 kWh"
+],
+"total_amount_eur": [
+"Total a pagar 63,61€",
+"Total gas 60,58€",
+"Base imponible 60,58€",
+"Total IVA Reducido 5% 60,58€ 5% 3,03€"
+],
+"cups": [
+"ES0217020101041874FT"
+],
+"energy_type": [
+"aquí tienes tu factura de gas",
+"Consumo kWh",
+"Tus datos de suministro de gas"
+]
+},
+"warnings": []
+}

@@ -1,0 +1,47 @@
+{
+"parser_name": "naturgy_regulada_electricidad",
+"parser_version": "1.0.0",
+"parse_source": "parser_especifico",
+"parse_confidence": 0.98,
+"energy_type": "electricidad",
+"supplier_name": "Comercializadora Regulada, Gas & Power, S.A.",
+"invoice_number": "FE25137022313356",
+"cups_original": "ES0022000006290850YS1P",
+"cups_key": "ES0022000006290850YS",
+"period_start": "2025-08-20",
+"period_end": "2025-08-26",
+"computed_year": 2025,
+"computed_month": 8,
+"consumption_kwh": "22",
+"total_amount_eur": "7.80",
+"raw_candidates": {
+"invoice_number": [
+"FE25137022313356"
+],
+"period": [
+"20 de agosto de 2025 a 26 de agosto de 2025"
+],
+"consumption_kwh": [
+"Su consumo en el periodo facturado ha sido 22 kWh.",
+"Consumo en P1: 1 kWh",
+"Consumo en P2: 3 kWh",
+"Consumo en P3: 18 kWh"
+],
+"total_amount_eur": [
+"TOTAL IMPORTE FACTURA: 7,80 €",
+"IMPORTE FACTURA: 7,80 €"
+],
+"cups": [
+"ES0022000006290850YS1P"
+]
+},
+"warnings": [
+{
+"level": "info",
+"code": "CUPS_NORMALIZED",
+"message": "CUPS normalizado automáticamente para comparación.",
+"field_name": "cups_key",
+"is_blocking": false
+}
+]
+}
