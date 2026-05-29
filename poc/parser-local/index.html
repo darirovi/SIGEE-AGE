@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SIGEE-AGE Parser Local PoC</title>
+  <script src="vendor/pdf.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; margin: 1rem; background: #f9f9f9; color: #222; font-size: 14px; }
@@ -673,6 +674,11 @@ function showOverlay(show) {
 // INIT
 // ============================================================
 async function init() {
+  // Configure pdf.js worker (required for off-thread PDF parsing)
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
+  }
+
   try {
     const resp = await fetch('./sample-data/controlled-cups.json');
     const txt = await resp.text();
