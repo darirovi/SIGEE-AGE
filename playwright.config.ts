@@ -21,12 +21,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    // No webServer here — assume HTTP server is already running on port 7890
-    // To run tests with an inline server:
-    //   webServer: {
-    //     command: 'cd <project-root> && python3 -m http.server 7890',
-    //     port: 7890,
-    //     reuseExistingServer: true,
-    //   },
+    command: 'python3 -m http.server 7890',
+    port: 7890,
+    reuseExistingServer: true,
   },
 });
