@@ -74,8 +74,11 @@
       <button id="exportJsonBtn" class="secondary">Descargar JSON</button>
       <button id="exportCsvBtn" class="secondary">Descargar CSV</button>
       <button id="clearBtn" class="danger">Limpiar resultados</button>
+      <button id="gestionarCupsBtn">Gestionar CUPS</button>
     </div>
   </div>
+
+  <div id="cupsLoadWarning" style="display:none;background:#fef3c7;border:1px solid #f59e0b;padding:8px 12px;border-radius:4px;margin-bottom:8px;font-size:14px;"></div>
 
   <h2>Resultados <span id="result-count"></span></h2>
   <div class="card">
@@ -143,6 +146,7 @@ let results = [];
 let expectedCache = {};       // filename_base → parsed JSON
 let selectedIndex = -1;
 let debugVisible = true;
+let cupsLoadWarning = null;   // FIX-A: set by loadControlledCups on corruption, consumed by init()
 
 // ============================================================
 // UTILITIES (T-002)
@@ -234,6 +238,53 @@ function parsePeriodRange(text) {
 
 function escapeHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ============================================================
+// STORAGE — PERSISTENCE (T-001)
+// ============================================================
+function saveControlledCups() {
+  try {
+    localStorage.setItem('sigee-controlled-cups', JSON.stringify(controlledCups));
+  } catch(e) {
+    console.warn('[SIGEE] localStorage unavailable:', e);
+    const errorEl = document.getElementById('cupsFormError');
+    if (errorEl) errorEl.textContent = 'Error: no se pudo guardar. ¿Está el almacenamiento lleno?';
+    return false;
+  }
+  return true;
+}
+
+async function loadControlledCups() {
+  try {
+    const stored = localStorage.getItem('sigee-controlled-cups');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed === 'object') {
+        const isValid = Object.values(parsed).every(v =>
+          v && typeof v === 'object' &&
+          typeof v.building_key === 'string' &&
+          typeof v.building_name === 'string'
+        );
+        if (!isValid) throw new Error('invalid shape');
+        controlledCups = parsed;
+        return;
+      }
+    }
+  } catch(e) {
+    console.warn('[SIGEE] localStorage parse failed, using seed:', e);
+    cupsLoadWarning = 'ATENCIÓN: Se detectó corrupción en datos guardados. Usando lista original.';
+  }
+  // Seed fallback
+  try {
+    const resp = await fetch('./sample-data/controlled-cups.json');
+    const txt = await resp.text();
+    const jsonStr = txt.replace(/#.*$/gm, '').replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+    controlledCups = JSON.parse(jsonStr);
+  } catch(e) {
+    console.warn('[SIGEE] Seed load failed, using empty:', e);
+    controlledCups = {};
+  }
 }
 
 // ============================================================
@@ -723,6 +774,120 @@ function showOverlay(show) {
 }
 
 // ============================================================
+// CUPS MODAL FUNCTIONS (T-004, T-005, T-006, T-007)
+// ============================================================
+function openCupsModal() {
+  document.getElementById('cupsModalOverlay').style.display = 'flex';
+  renderCupsModal();
+}
+
+function closeCupsModal() {
+  document.getElementById('cupsModalOverlay').style.display = 'none';
+}
+
+function renderCupsModal() {
+  const tbody = document.getElementById('cupsModalTableBody');
+  if (!tbody) return;
+  const cups = Object.entries(controlledCups);
+  if (cups.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:16px;text-align:center;color:#666;">No hay CUPS controlados. Añade el primero.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = cups.map(([key, val]) => {
+    const typeLabel = val.energy_type === 'gas_natural' ? 'Gas' : 'Elec.';
+    const bgStyle = val.energy_type === 'gas_natural' ? '#fef3c7' : '#dbeafe';
+    return `<tr>
+      <td style="padding:8px;border:1px solid #ddd;font-family:monospace;font-size:13px;">${escapeHtml(key)}</td>
+      <td style="padding:8px;border:1px solid #ddd;"></td>
+      <td style="padding:8px;border:1px solid #ddd;"></td>
+      <td style="padding:8px;border:1px solid #ddd;"><span style="background:${bgStyle};padding:2px 6px;border-radius:4px;font-size:12px;">${typeLabel}</span></td>
+      <td style="padding:8px;border:1px solid #ddd;font-size:13px;">${escapeHtml(val.supplier)}</td>
+      <td style="padding:8px;border:1px solid #ddd;"><button class="cups-remove-btn" data-cups-key="${escapeHtml(key)}" style="background:#dc2626;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;">Eliminar</button></td>
+    </tr>`;
+  }).join('');
+
+  // FIX-2 & FIX-8: Use textContent for building_key and energy_type cells, wire remove buttons via delegation
+  const rows = tbody.querySelectorAll('tr');
+  rows.forEach(row => {
+    const key = row.cells[0].textContent;
+    const val = controlledCups[key];
+    if (val) {
+      row.cells[1].textContent = val.building_key;
+      row.cells[2].textContent = val.building_name;
+    }
+  });
+}
+
+function addCupsEntry() {
+  const errorEl = document.getElementById('cupsFormError');
+  errorEl.textContent = '';
+
+  const cupsKeyRaw = document.getElementById('cupsInputKey').value.trim();
+  const buildingKey = document.getElementById('cupsInputBuildingKey').value.trim();
+  const buildingName = document.getElementById('cupsInputBuildingName').value.trim();
+  const energyType = document.getElementById('cupsInputEnergyType').value;
+  const supplier = document.getElementById('cupsInputSupplier').value.trim();
+
+  // Validate required
+  if (!cupsKeyRaw || !buildingKey || !buildingName || !supplier) {
+    errorEl.textContent = 'Todos los campos son obligatorios.';
+    return;
+  }
+
+  // Normalize CUPS
+  const cupsKey = normalizeCups(cupsKeyRaw).normalized;
+  if (!cupsKey) {
+    errorEl.textContent = 'CUPS inválido tras normalización.';
+    return;
+  }
+
+  // Duplicate check
+  if (controlledCups[cupsKey]) {
+    errorEl.textContent = 'Este CUPS ya existe en la lista.';
+    return;
+  }
+
+  // Add to memory first (FIX-B: rollback if save fails)
+  controlledCups[cupsKey] = {
+    building_key: buildingKey,
+    building_name: buildingName,
+    energy_type: energyType,
+    supplier: supplier
+  };
+
+  if (!saveControlledCups()) {
+    delete controlledCups[cupsKey];
+    errorEl.textContent = 'Error: no se pudo guardar. ¿Está el almacenamiento lleno?';
+    return;
+  }
+  renderCupsModal();
+  revalidateResults();
+
+  // Clear form
+  document.getElementById('cupsInputKey').value = '';
+  document.getElementById('cupsInputBuildingKey').value = '';
+  document.getElementById('cupsInputBuildingName').value = '';
+  document.getElementById('cupsInputSupplier').value = '';
+}
+
+function removeCupsEntry(cupsKey) {
+  if (!controlledCups[cupsKey]) return;
+  if (!saveControlledCups()) return;
+  delete controlledCups[cupsKey];
+  renderCupsModal();
+  revalidateResults();
+}
+
+function revalidateResults() {
+  if (!results || results.length === 0) return;
+  results.forEach(r => {
+    r.warnings = buildWarnings(r, controlledCups);
+    r._validation = null;
+  });
+  renderResults();
+}
+
+// ============================================================
 // INIT
 // ============================================================
 async function init() {
@@ -732,12 +897,15 @@ async function init() {
   }
 
   try {
-    const resp = await fetch('./sample-data/controlled-cups.json');
-    const txt = await resp.text();
-    // Strip comments (JSON-with-comments from the file header)
-    const jsonStr = txt.replace(/#.*$/gm, '').replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
-    controlledCups = JSON.parse(jsonStr);
+    await loadControlledCups();
   } catch(e) { /* keep empty */ }
+
+  if (cupsLoadWarning) {
+    const banner = document.getElementById('cupsLoadWarning');
+    banner.textContent = cupsLoadWarning;
+    banner.style.display = 'block';
+    cupsLoadWarning = null;
+  }
 
   document.getElementById('processBtn').addEventListener('click', () => {
     const fi = document.getElementById('fileInput');
@@ -746,9 +914,75 @@ async function init() {
   document.getElementById('exportJsonBtn').addEventListener('click', exportJson);
   document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
   document.getElementById('clearBtn').addEventListener('click', clearResults);
+
+  // Wire CUPS modal
+  document.getElementById('gestionarCupsBtn').addEventListener('click', openCupsModal);
+  document.getElementById('cupsModalClose').addEventListener('click', closeCupsModal);
+  document.getElementById('cupsModalOverlay').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('cupsModalOverlay')) closeCupsModal();
+  });
+  document.getElementById('cupsAddBtn').addEventListener('click', addCupsEntry);
+  document.getElementById('cupsModalTableBody').addEventListener('click', (e) => {
+    const btn = e.target.closest('.cups-remove-btn');
+    if (btn) removeCupsEntry(btn.dataset.cupsKey);
+  });
+  document.getElementById('cupsInputKey').addEventListener('blur', function() {
+    this.value = normalizeCups(this.value).normalized;
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
 </script>
+
+<div id="cupsModalOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+  <div id="cupsModal" style="background:white;border-radius:8px;padding:24px;max-width:900px;width:90%;max-height:80vh;overflow-y:auto;position:relative;">
+    <button id="cupsModalClose" style="position:absolute;top:8px;right:12px;background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+    <h2 style="margin:0 0 16px;">Gestionar CUPS Controlados</h2>
+    <p style="margin:0 0 16px;font-size:14px;color:#666;">Añade o elimina CUPS de la lista. Los cambios persisten entre sesiones.</p>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+      <thead>
+        <tr style="background:#f5f5f5;">
+          <th style="padding:8px;text-align:left;border:1px solid #ddd;">CUPS</th>
+          <th style="padding:8px;text-align:left;border:1px solid #ddd;">Edificio</th>
+          <th style="padding:8px;text-align:left;border:1px solid #ddd;">Nombre</th>
+          <th style="padding:8px;text-align:left;border:1px solid #ddd;">Tipo</th>
+          <th style="padding:8px;text-align:left;border:1px solid #ddd;">Distribuidora</th>
+          <th style="padding:8px;text-align:left;border:1px solid #ddd;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="cupsModalTableBody"></tbody>
+    </table>
+    <div id="cupsAddForm" style="border-top:1px solid #eee;padding-top:16px;">
+      <h3 style="margin:0 0 12px;font-size:16px;">Añadir nuevo CUPS</h3>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 2fr auto;gap:8px;align-items:end;">
+        <div>
+          <label style="display:block;font-size:12px;margin-bottom:4px;">CUPS</label>
+          <input id="cupsInputKey" type="text" placeholder="ES..." style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;margin-bottom:4px;">Edificio</label>
+          <input id="cupsInputBuildingKey" type="text" placeholder="VALLEHERMOSO" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;margin-bottom:4px;">Nombre</label>
+          <input id="cupsInputBuildingName" type="text" placeholder="Vallehermoso" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;margin-bottom:4px;">Tipo</label>
+          <select id="cupsInputEnergyType" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;">
+            <option value="electricidad">Electricidad</option>
+            <option value="gas_natural">Gas Natural</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;margin-bottom:4px;">Distribuidora</label>
+          <input id="cupsInputSupplier" type="text" placeholder="Iberdrola" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        </div>
+        <button id="cupsAddBtn" type="button" style="padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:4px;cursor:pointer;">Añadir</button>
+      </div>
+      <div id="cupsFormError" style="color:#dc2626;font-size:13px;margin-top:8px;min-height:18px;"></div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
