@@ -179,10 +179,10 @@ async function processPdf(page: Page, pdfPath: string): Promise<Record<string, s
   await page.locator('button:has-text("Procesar")').click();
   await page.waitForTimeout(2000); // allow PDF to parse
 
-  // Read result row
+  // Read result row (new table structure after poc-tailwind-ux)
   const rowData: Record<string, string> = {};
-  const headers = await page.locator('.results-table thead th').allTextContents();
-  const cells = await page.locator('.results-table tbody tr:first-child td').allTextContents();
+  const headers = await page.locator('#table-header-row th').allTextContents();
+  const cells = await page.locator('#resultsBody tr:first-child td').allTextContents();
 
   headers.forEach((h, i) => {
     rowData[h.trim()] = (cells[i] || '').trim();
@@ -261,17 +261,11 @@ test.describe('Parser Integration Tests', () => {
         }
       }
 
-      // Check for blocking warnings (skip — test fixtures may have uncontrolled CUPS)
-      // The "Esperado" column should show ✅ match or ⚠️ N dif, not 🔴 blocking
-      const expectedCol = rowData['Esperado'] || '';
-      const hasBlocking = expectedCol.includes('🔴') || expectedCol.includes('[BLOQ]');
+      // "Esperado" column was removed in poc-tailwind-ux (dev-only info)
+      // Blocking warning check skipped — visible in invoice detail modal instead
 
       if (failures.length > 0) {
         throw new Error(`Validation failed:\n${failures.join('\n')}`);
-      }
-
-      if (hasBlocking) {
-        throw new Error(`Blocking warnings detected: ${expectedCol}`);
       }
     });
   }

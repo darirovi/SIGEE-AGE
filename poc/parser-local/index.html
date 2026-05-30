@@ -4,135 +4,202 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SIGEE-AGE Parser Local PoC</title>
-  <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
   <script src="vendor/pdf.min.js"></script>
 </head>
-<body>
-  <h1>SIGEE-AGE Parser Local PoC</h1>
+<body class="bg-gray-50 text-gray-900 font-sans m-0">
 
-  <h2>Procesar Facturas PDF</h2>
-  <div class="card">
-    <div class="toolbar">
-      <input type="file" id="fileInput" multiple accept=".pdf" />
-      <button id="processBtn">Procesar PDFs</button>
-      <button id="exportJsonBtn" class="secondary">Descargar JSON</button>
-      <button id="exportCsvBtn" class="secondary">Descargar CSV</button>
-      <button id="clearBtn" class="danger">Limpiar resultados</button>
-      <button id="gestionarCupsBtn">Gestionar CUPS</button>
+  <!-- MAIN LAYOUT -->
+  <div class="max-w-7xl mx-auto px-4 py-6">
+
+    <!-- HEADER -->
+    <header class="mb-6">
+      <h1 class="text-2xl font-bold text-gray-800">SIGEE-AGE Parser Local PoC</h1>
+      <p class="text-sm text-gray-500 mt-1">Procesa facturas PDF de electricity y gas natural</p>
+    </header>
+
+    <!-- UPLOAD CARD -->
+    <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+      <!-- DROP ZONE -->
+      <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer transition-colors duration-200 hover:border-blue-400 hover:bg-blue-50">
+        <div id="drop-icon" class="mb-3">
+          <svg class="mx-auto w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+          </svg>
+        </div>
+        <p id="drop-text" class="text-gray-600 text-sm font-medium mb-1">Arrastra archivos PDF aquí</p>
+        <p class="text-xs text-gray-400">o haz clic para seleccionar</p>
+        <p id="file-preview" class="mt-2 text-xs text-blue-600 font-medium hidden"></p>
+        <input type="file" id="fileInput" multiple accept=".pdf" class="hidden" />
+      </div>
+
+      <!-- TOOLBAR -->
+      <div class="toolbar flex flex-wrap gap-2 items-center mt-4">
+        <button id="processBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+          Procesar PDFs
+        </button>
+        <button id="gestionarCupsBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition-colors text-sm">
+          Gestionar CUPS
+        </button>
+        <div class="flex-1"></div>
+        <button id="exportJsonBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+          Descargar JSON
+        </button>
+        <button id="exportCsvBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+          Descargar CSV
+        </button>
+        <button id="clearBtn" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded transition-colors text-sm">
+          Limpiar resultados
+        </button>
+      </div>
+
+      <!-- CUPS WARNING BANNER -->
+      <div id="cupsLoadWarning" class="hidden mt-3 bg-amber-50 border border-amber-300 text-amber-800 text-sm px-3 py-2 rounded"></div>
+    </section>
+
+    <!-- RESULTS SECTION -->
+    <section id="results-section" class="hidden">
+      <!-- VIEW TOGGLE + COUNT -->
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-700">
+          Resultados <span id="result-count" class="text-gray-400 font-normal"></span>
+        </h2>
+        <div class="flex gap-1 bg-gray-200 p-1 rounded">
+          <button id="view-cards-btn" class="px-3 py-1 text-sm rounded font-medium transition-colors bg-white shadow text-gray-800">Cards</button>
+          <button id="view-table-btn" class="px-3 py-1 text-sm rounded font-medium transition-colors text-gray-500 hover:text-gray-700">Tabla</button>
+        </div>
+      </div>
+
+      <!-- CARDS GRID -->
+      <div id="cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6"></div>
+
+      <!-- TABLE -->
+      <div id="table-container" class="hidden bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-3 border-b border-gray-200 flex gap-3 items-center flex-wrap">
+          <label class="text-sm font-medium text-gray-600">Filtrar:</label>
+          <input id="table-filter" type="text" placeholder="Buscar..." class="border border-gray-300 rounded px-3 py-1 text-sm flex-1 min-w-48" />
+          <select id="table-page-size" class="border border-gray-300 rounded px-2 py-1 text-sm">
+            <option value="25">25 filas</option>
+            <option value="50" selected>50 filas</option>
+            <option value="100">100 filas</option>
+          </select>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-sm" id="resultsTable">
+            <thead class="bg-gray-100 text-left">
+              <tr id="table-header-row"></tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+        <div id="table-pagination" class="flex items-center justify-between px-4 py-3 border-t border-gray-200 text-sm text-gray-600">
+          <span id="pagination-info"></span>
+          <div class="flex gap-1" id="pagination-controls"></div>
+        </div>
+      </div>
+
+      <!-- DEBUG PANEL -->
+      <div id="debug-panel" class="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <button id="toggleDebugBtn" class="text-sm text-gray-500 hover:text-gray-700 mb-3">Ocultar debug</button>
+        <div id="debug-json" class="debug-section">
+          <details>
+            <summary class="cursor-pointer font-medium text-gray-600 text-sm py-1">JSON resultado (20 campos)</summary>
+            <pre id="debug-json-content" class="mt-2 bg-gray-50 border border-gray-200 rounded p-3 text-xs overflow-x-auto whitespace-pre-wrap break-all max-h-48 overflow-y-auto"></pre>
+          </details>
+        </div>
+        <div id="debug-raw" class="debug-section">
+          <details>
+            <summary class="cursor-pointer font-medium text-gray-600 text-sm py-1">Texto raw extraído del PDF</summary>
+            <pre id="debug-raw-content" class="mt-2 bg-gray-50 border border-gray-200 rounded p-3 text-xs overflow-x-auto whitespace-pre-wrap break-all max-h-48 overflow-y-auto"></pre>
+          </details>
+        </div>
+        <div id="debug-warnings" class="debug-section">
+          <details>
+            <summary class="cursor-pointer font-medium text-gray-600 text-sm py-1">Detalle de avisos</summary>
+            <div id="debug-warnings-content" class="mt-2"></div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /max-w-7xl -->
+
+  <!-- PROCESSING OVERLAY -->
+  <div id="processing-overlay" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg p-8 text-center shadow-lg">
+      <div class="w-8 h-8 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
+      <div class="text-sm font-medium text-gray-700">Procesando...</div>
     </div>
   </div>
 
-  <div id="cupsLoadWarning" style="display:none;background:#fef3c7;border:1px solid #f59e0b;padding:8px 12px;border-radius:4px;margin-bottom:8px;font-size:14px;"></div>
+  <!-- TOAST CONTAINER (fixed, managed by js/toast.js) -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
-  <h2>Resultados <span id="result-count"></span></h2>
-  <div class="card">
-    <div class="table-wrap">
-      <table class="results-table" id="resultsTable">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Archivo</th>
-            <th>Parser</th>
-            <th>Nº Factura</th>
-            <th>CUPS original</th>
-            <th>CUPS normalizado</th>
-            <th>Edificio</th>
-            <th>Tipo energía</th>
-            <th>Periodo</th>
-            <th>Mes computado</th>
-            <th>Consumo (kWh)</th>
-            <th>Importe (€)</th>
-            <th>CUPS</th>
-            <th>Avisos</th>
-            <th>Esperado</th>
-          </tr>
-        </thead>
-        <tbody id="resultsBody"></tbody>
-      </table>
-    </div>
-
-    <div id="debug-panel" style="display:none;">
-      <button id="toggleDebugBtn" class="secondary" style="margin-top:0.5rem;">Ocultar debug</button>
-      <div id="debug-json" class="debug-section">
-        <details open>
-          <summary>JSON resultado (20 campos)</summary>
-          <pre id="debug-json-content"></pre>
-        </details>
+  <!-- CUPS MODAL -->
+  <div id="cupsModalOverlay" class="fixed inset-0 bg-black/50 flex items-center justify-center z-40 hidden">
+    <div id="cupsModal" class="bg-white rounded-lg p-6 max-w-4xl w-[90vw] max-h-[80vh] overflow-y-auto relative">
+      <button id="cupsModalClose" class="absolute top-2 right-3 bg-none border-none text-2xl cursor-pointer text-gray-400 hover:text-gray-600">&times;</button>
+      <h2 class="text-lg font-semibold mb-1">Gestionar CUPS Controlados</h2>
+      <p class="text-sm text-gray-500 mb-4">Añade o elimina CUPS de la lista. Los cambios persisten entre sesiones.</p>
+      <div class="overflow-x-auto mb-4">
+        <table class="w-full border-collapse text-sm">
+          <thead>
+            <tr class="bg-gray-50">
+              <th class="p-2 text-left border border-gray-200 font-medium">CUPS</th>
+              <th class="p-2 text-left border border-gray-200 font-medium">Edificio</th>
+              <th class="p-2 text-left border border-gray-200 font-medium">Nombre</th>
+              <th class="p-2 text-left border border-gray-200 font-medium">Tipo</th>
+              <th class="p-2 text-left border border-gray-200 font-medium">Distribuidora</th>
+              <th class="p-2 text-left border border-gray-200 font-medium">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="cupsModalTableBody"></tbody>
+        </table>
       </div>
-      <div id="debug-raw" class="debug-section">
-        <details open>
-          <summary>Texto raw extraído del PDF</summary>
-          <pre id="debug-raw-content"></pre>
-        </details>
-      </div>
-      <div id="debug-warnings" class="debug-section">
-        <details open>
-          <summary>Detalle de avisos</summary>
-          <div id="debug-warnings-content"></div>
-        </details>
-      </div>
-    </div>
-  </div>
-
-  <div id="processing-overlay">
-    <div class="spinner">
-      <div class="spinner-icon"></div>
-      <div>Procesando...</div>
-    </div>
-  </div>
-
-  <!-- CUPS Modal -->
-  <div id="cupsModalOverlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
-    <div id="cupsModal" style="background:white;border-radius:8px;padding:24px;max-width:900px;width:90%;max-height:80vh;overflow-y:auto;position:relative;">
-      <button id="cupsModalClose" style="position:absolute;top:8px;right:12px;background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
-      <h2 style="margin:0 0 16px;">Gestionar CUPS Controlados</h2>
-      <p style="margin:0 0 16px;font-size:14px;color:#666;">Añade o elimina CUPS de la lista. Los cambios persisten entre sesiones.</p>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
-        <thead>
-          <tr style="background:#f5f5f5;">
-            <th style="padding:8px;text-align:left;border:1px solid #ddd;">CUPS</th>
-            <th style="padding:8px;text-align:left;border:1px solid #ddd;">Edificio</th>
-            <th style="padding:8px;text-align:left;border:1px solid #ddd;">Nombre</th>
-            <th style="padding:8px;text-align:left;border:1px solid #ddd;">Tipo</th>
-            <th style="padding:8px;text-align:left;border:1px solid #ddd;">Distribuidora</th>
-            <th style="padding:8px;text-align:left;border:1px solid #ddd;">Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="cupsModalTableBody"></tbody>
-      </table>
-      <div id="cupsAddForm" style="border-top:1px solid #eee;padding-top:16px;">
-        <h3 style="margin:0 0 12px;font-size:16px;">Añadir nuevo CUPS</h3>
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 2fr auto;gap:8px;align-items:end;">
+      <div id="cupsAddForm" class="border-t border-gray-200 pt-4">
+        <h3 class="text-sm font-semibold mb-3">Añadir nuevo CUPS</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-2">
           <div>
-            <label style="display:block;font-size:12px;margin-bottom:4px;">CUPS</label>
-            <input id="cupsInputKey" type="text" placeholder="ES..." style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+            <label class="block text-xs text-gray-500 mb-1">CUPS</label>
+            <input id="cupsInputKey" type="text" placeholder="ES..." class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm box-border" />
           </div>
           <div>
-            <label style="display:block;font-size:12px;margin-bottom:4px;">Edificio</label>
-            <input id="cupsInputBuildingKey" type="text" placeholder="VALLEHERMOSO" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+            <label class="block text-xs text-gray-500 mb-1">Edificio</label>
+            <input id="cupsInputBuildingKey" type="text" placeholder="VALLEHERMOSO" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm box-border" />
           </div>
           <div>
-            <label style="display:block;font-size:12px;margin-bottom:4px;">Nombre</label>
-            <input id="cupsInputBuildingName" type="text" placeholder="Vallehermoso" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+            <label class="block text-xs text-gray-500 mb-1">Nombre</label>
+            <input id="cupsInputBuildingName" type="text" placeholder="Vallehermoso" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm box-border" />
           </div>
           <div>
-            <label style="display:block;font-size:12px;margin-bottom:4px;">Tipo</label>
-            <select id="cupsInputEnergyType" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;">
+            <label class="block text-xs text-gray-500 mb-1">Tipo</label>
+            <select id="cupsInputEnergyType" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm box-border bg-white">
               <option value="electricidad">Electricidad</option>
               <option value="gas_natural">Gas Natural</option>
             </select>
           </div>
           <div>
-            <label style="display:block;font-size:12px;margin-bottom:4px;">Distribuidora</label>
-            <input id="cupsInputSupplier" type="text" placeholder="Iberdrola" style="width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+            <label class="block text-xs text-gray-500 mb-1">Distribuidora</label>
+            <input id="cupsInputSupplier" type="text" placeholder="Iberdrola" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm box-border" />
           </div>
-          <button id="cupsAddBtn" type="button" style="padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:4px;cursor:pointer;">Añadir</button>
         </div>
-        <div id="cupsFormError" style="color:#dc2626;font-size:13px;margin-top:8px;min-height:18px;"></div>
+        <div class="flex items-center gap-3">
+          <button id="cupsAddBtn" type="button" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded text-sm transition-colors">Añadir</button>
+          <div id="cupsFormError" class="text-red-600 text-xs min-h-4"></div>
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- INVOICE DETAIL MODAL -->
+  <div id="invoiceModalOverlay" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div id="invoiceModalContent" class="bg-white rounded-lg p-6 max-w-3xl w-[92vw] max-h-[85vh] overflow-y-auto relative shadow-xl">
+      <button id="invoiceModalClose" class="absolute top-3 right-4 bg-none border-none text-2xl cursor-pointer text-gray-400 hover:text-gray-600">&times;</button>
+      <div id="invoice-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS: Core modules first -->
   <script src="js/state.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/seed-cups.js"></script>
@@ -147,9 +214,20 @@
   <script src="js/pdf.js"></script>
   <script src="js/parsers/index.js"></script>
   <script src="js/validation.js"></script>
+
+  <!-- New UI modules -->
+  <script src="js/toast.js"></script>
+  <script src="js/drop-zone.js"></script>
+  <script src="js/invoice-cards.js"></script>
+  <script src="js/invoice-modal.js"></script>
+  <script src="js/table-view.js"></script>
+
+  <!-- Unchanged modules -->
   <script src="js/render.js"></script>
   <script src="js/export.js"></script>
   <script src="js/cups-modal.js"></script>
+
+  <!-- Entry point -->
   <script src="js/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,15 @@
+{
+  "name": "sigee-age-poc-parser-local",
+  "version": "0.1.0",
+  "description": "PoC parser-local — browser-only PDF invoice parser",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "serve": "python3 -m http.server 7890"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  }
+}

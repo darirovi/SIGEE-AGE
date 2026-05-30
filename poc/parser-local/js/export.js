@@ -1,15 +1,22 @@
 // EXPORT FUNCTIONS
 
 function exportJson() {
-  if (window.results.length === 0) return;
+  if (!window.results || window.results.length === 0) {
+    if (typeof window.showToast === 'function') window.showToast('No hay resultados para exportar', 'info');
+    return;
+  }
   const blob = new Blob([JSON.stringify(window.results, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = `parsed-invoices-${Date.now()}.json`; a.click();
   URL.revokeObjectURL(url);
+  if (typeof window.showToast === 'function') window.showToast('JSON exportado correctamente', 'success');
 }
 
 function exportCsv() {
-  if (window.results.length === 0) return;
+  if (!window.results || window.results.length === 0) {
+    if (typeof window.showToast === 'function') window.showToast('No hay resultados para exportar', 'info');
+    return;
+  }
   const headers = ['file_name','parser_name','energy_type','invoice_number','cups_original','cups_key','building_key','period_start','period_end','computed_year','computed_month','consumption_kwh','total_amount_eur','controlled_cups_match','warnings_count','has_blocking_warnings'];
   const rows = window.results.map(r => {
     const warningsStr = r.warnings.map(w=>w.code).join(';');
@@ -30,6 +37,7 @@ function exportCsv() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = `parsed-invoices-${Date.now()}.csv`; a.click();
   URL.revokeObjectURL(url);
+  if (typeof window.showToast === 'function') window.showToast('CSV exportado correctamente', 'success');
 }
 
 // ============================================================
@@ -39,8 +47,12 @@ function clearResults() {
   window.results = [];
   window.selectedIndex = -1;
   window.expectedCache = {};
+  const section = document.getElementById('results-section');
+  if (section) section.classList.add('hidden');
+  const grid = document.getElementById('cards-grid');
+  if (grid) grid.innerHTML = '';
   document.getElementById('resultsBody').innerHTML = '';
-  document.getElementById('debug-panel').style.display = 'none';
+  document.getElementById('debug-panel').classList.add('hidden');
   document.getElementById('result-count').textContent = '';
 }
 
@@ -48,5 +60,11 @@ function clearResults() {
 // UI HELPERS
 // ============================================================
 function showOverlay(show) {
-  document.getElementById('processing-overlay').classList.toggle('active', show);
+  const overlay = document.getElementById('processing-overlay');
+  if (!overlay) return;
+  if (show) {
+    overlay.classList.remove('hidden');
+  } else {
+    overlay.classList.add('hidden');
+  }
 }

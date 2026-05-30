@@ -86,8 +86,34 @@ function parsePeriodRange(text) {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+function cupsStatus(result) {
+  if (!result.cups_key) return { cls:'cups-uncontrolled', icon:'⚪', label:'desconocido' };
+  return window.controlledCups && window.controlledCups[result.cups_key]
+    ? { cls:'cups-controlled', icon:'🟢', label:'controlado' }
+    : { cls:'cups-uncontrolled', icon:'🔴', label:'no controlado' };
+}
+
+function getSemaphoreState(result) {
+  if (!result) return { color: 'gray', bg: 'bg-gray-100 border-gray-200', label: 'desconocido' };
+  const blocking = result.warnings.filter(w => w.isBlocking).length;
+  if (blocking > 0) {
+    return { color: 'red', bg: 'bg-red-50 border-red-200', label: 'requiere atención' };
+  }
+  if (result.estado === 'corregida' || result.warnings.length > 0) {
+    return { color: 'yellow', bg: 'bg-yellow-50 border-yellow-200', label: 'corregida / avisos' };
+  }
+  if (result.estado === 'validada') {
+    return { color: 'green', bg: 'bg-green-50 border-green-200', label: 'validada' };
+  }
+  return { color: 'gray', bg: 'bg-gray-100 border-gray-200', label: 'desconocido' };
+}
+
+window.escapeHtml = escapeHtml;
+window.cupsStatus = cupsStatus;
+window.getSemaphoreState = getSemaphoreState;
 
 // ============================================================
 // EMPTY RESULT (shared — used by parsers before validation.js loads)
