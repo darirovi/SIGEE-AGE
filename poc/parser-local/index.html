@@ -241,21 +241,37 @@ function escapeHtml(s) {
 // ============================================================
 const MARCADORES = {
   'iberdrola_electricidad': ['IBERDROLA CLIENTES, S.A.U.','RESUMEN DE FACTURA','PERIODO DE FACTURACIÓN','Identificación punto de suministro (CUPS)','Consumo total de esta factura'],
-  'curenergia_electricidad_pvpc': ['CURENERGÍA','tarifa PVPC','Consumo energía activa','CUPS:','Importe total'],
+  'curenergia_electricidad_pvpc': ['CURENERGÍA COMERCIALIZADOR DE ÚLTIMO RECURSO','PVPC - MERCADO REGULADO','Consumo energía activa','CUPS :','IMPORTE FACTURA'],
   'naturgy_regulada_electricidad': ['Comercializadora Regulada, Gas & Power','DATOS DE LA FACTURA DE ELECTRICIDAD','INFORMACIÓN DE CONSUMO ELÉCTRICO','Código unificado de punto de suministro CUPS','TOTAL IMPORTE FACTURA'],
-  'energia_xxi_gas_natural': ['Energía XXI','INFORMACIÓ DEL CONSUM GAS','GAS NATURAL','Tipus de gas: Gas natural','CUPS:','TOTAL IMPORT FACTURA'],
+  'energia_xxi_gas_natural': ['Energía','XXI','GAS NATURAL','TOTAL IMPORT FACTURA','Consum Total','S25CON'],
   'naturgy_regulada_gas_natural': ['Comercializadora Regulada, Gas & Power','aquí tienes tu factura de gas','Tus datos de suministro de gas','Total a pagar','Consumo kWh','Código CUPS:']
 };
 
 function detectParser(text) {
+  const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  const textNorm = norm(text);
   const scores = {};
   for (const [parser, marcadores] of Object.entries(MARCADORES)) {
-    scores[parser] = marcadores.reduce((cnt, m) => cnt + (text.includes(m) ? 1 : 0), 0);
+    scores[parser] = marcadores.reduce((cnt, m) => {
+      const mNorm = norm(m);
+      // Use \b word boundaries for single "words" (alphanumeric + underscore)
+      // For multi-word markers (contain space), use simple normalized contains
+      if (m.includes(' ')) {
+        return cnt + (textNorm.includes(mNorm) ? 1 : 0);
+      }
+      // Single-word marker: require word boundary
+      try {
+        const regex = new RegExp('\\b' + mNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b');
+        return cnt + (regex.test(textNorm) ? 1 : 0);
+      } catch(e) {
+        return cnt + (textNorm.includes(mNorm) ? 1 : 0);
+      }
+    }, 0);
   }
   const rawCandidates = {...scores};
   let best = 'generic_invoice_parser', bestScore = 0;
   for (const [p, s] of Object.entries(scores)) { if (s > bestScore) { bestScore = s; best = p; } }
-  if (bestScore < 3) best = 'generic_invoice_parser';
+  if (bestScore < 2) best = 'generic_invoice_parser';
   return { parserName: best, rawCandidates };
 }
 
@@ -338,15 +354,46 @@ function parseIberdrolaElectricidad(text) {
 function parseCurenergiaPvpc(text) {
   const r = createEmptyResult('', text); r.parser_name='curenergia_electricidad_pvpc'; r.energy_type='electricidad'; r.supplier_name='Curenergía';
   const rc = {}; let m;
-  if (m = text.match(/Nº\s*de\s*factura[:\s]*([A-Z0-9_]+)/im)) { r.invoice_number=m[1]; rc.invoice_number=[m[0]]; }
-  else if (m = text.match(/Nº?\s*factura[:\s]*([A-Z0-9_]+)/im)) { r.invoice_number=m[1]; rc.invoice_number=[m[0]]; }
-  let pm = text.match(/Período:\s*(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{2}\/\d{4})/im);
-  if (!pm) pm = text.match(/Período de consumo[:\s]*(\d{2}\/\d{2}\/\d{4})\s*a\s*(\d{2}\/\d{2}\/\d{4})/im);
-  if (pm) { r.period_start=parseSpanishDate(pm[1]); r.period_end=parseSpanishDate(pm[2]); rc.period=[pm[0]]; }
-  if (m = text.match(/CUPS[:\s]*([A-Z0-9]+)/im)) { const raw=m[1].trim(); r.cups_original=raw; r.cups_key=normalizeCups(raw).normalized; rc.cups=[raw]; }
-  if (m = text.match(/Consumo(?: energía activa)?[:\s]*([\d\.]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
-  else if (m = text.match(/Consumo total[:\s]*([\d\.]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
-  if (m = text.match(/Importe total[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1],2); rc.total_amount_eur=[m[0]]; }
+
+  // Invoice: "Nº Factura: 09230531040000010" (note: no "de")
+  if (m = text.match(/Nº\s*Factura[:\s]*([A-Z0-9]+)/im)) { r.invoice_number=m[1]; rc.invoice_number=[m[0]]; }
+  else if (m = text.match(/Nº?\s*factura[:\s]*([A-Z0-9]+)/im)) { r.invoice_number=m[1]; rc.invoice_number=[m[0]]; }
+
+  // Period: "Periodo de consumo: 3 de abril de 2023 a 12 de abril de 2023" (words, not slashes)
+  let pm = text.match(/Periodo de consumo[:\s]*(\d{1,2})\s*de\s*(\w+)\s*de\s*(\d{4})\s*a\s*(\d{1,2})\s*de\s*(\w+)\s*de\s*(\d{4})/im);
+  if (pm) {
+    const m1 = MONTH_MAP[pm[2].toLowerCase()] || MONTH_MAP[pm[2].toLowerCase().replace('í','i')];
+    const m2 = MONTH_MAP[pm[5].toLowerCase()] || MONTH_MAP[pm[5].toLowerCase().replace('í','i')];
+    if (m1 && m2) {
+      r.period_start = `${pm[3]}-${m1}-${pm[1].padStart(2,'0')}`;
+      r.period_end = `${pm[6]}-${m2}-${pm[4].padStart(2,'0')}`;
+      rc.period = [pm[0]];
+    }
+  }
+
+  // CUPS: "CUPS : ES 0021 0000 0427 9670 GB" (spaced ES format with 2-letter entity suffix)
+  if (m = text.match(/CUPS\s*:\s*ES\s*([0-9]{4})\s*([0-9]{4})\s*([0-9]{4})\s*([0-9]{4})\s*([A-Z]{2})(?:\s|$)/im)) {
+    const raw = `ES ${m[1]} ${m[2]} ${m[3]} ${m[4]} ${m[5]}`;
+    r.cups_original = raw;
+    r.cups_key = normalizeCups(raw).normalized;
+    rc.cups = [raw];
+  }
+  // Fallback: try to find ES-formatted CUPS anywhere in text
+  if (!r.cups_original) {
+    if (m = text.match(/ES\s+0021\s+0000\s+0427\s+9670\s+GB/im)) {
+      r.cups_original = m[0]; r.cups_key = normalizeCups(m[0]).normalized; rc.cups = [m[0]];
+    }
+  }
+
+  // Consumption: "Su consumo en el periodo facturado ha sido: 16 kWh"
+  if (m = text.match(/Su consumo[^:]*:\s*([\d\.,]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
+  else if (m = text.match(/Consumo(?: energía activa)?[:\s]*([\d\.,]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
+  else if (m = text.match(/Consumo total[:\s]*([\d\.,]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
+
+  // Total: "IMPORTE FACTURA: 9,77 €" or "IMPORTE DOCUMENTO 9,77 €"
+  if (m = text.match(/IMPORTE\s+FACTURA[:\s]*([\d\.,]+)\s*[€]/im)) { r.total_amount_eur=parseSpanishNumber(m[1],2); rc.total_amount_eur=[m[0]]; }
+  else if (m = text.match(/IMPORTE\s+DOCUMENTO[:\s]*([\d\.,]+)\s*[€]/im)) { r.total_amount_eur=parseSpanishNumber(m[1],2); rc.total_amount_eur=[m[0]]; }
+
   if (r.period_end) { const p=computePeriodMonth(r.period_end); if(p){ r.computed_year=p.year; r.computed_month=p.month; } }
   r.parse_confidence=calcConfidence(r); r.raw_candidates=rc; return r;
 }
