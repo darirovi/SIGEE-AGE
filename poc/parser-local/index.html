@@ -152,10 +152,13 @@ function normalizeCups(cupsRaw) {
   const cleaned = cupsRaw.replace(/\s+/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   let normalized = cleaned;
   if (normalized.length === 22) normalized = normalized.slice(0, -2);
+  // Safety: CUPS must be exactly 20 chars (ES + 18 alphanumeric).
+  // Truncate any trailing suffix beyond 20 chars.
+  if (normalized.length > 20) normalized = normalized.slice(0, 20);
   return { normalized, wasNormalized: normalized !== cleaned, original };
 }
 
-function parseSpanishNumber(value) {
+function parseSpanishNumber(value, decimalPlaces = null) {
   if (value === null || value === undefined) return 'NaN';
   let s = String(value).trim();
   s = s.replace(/[€£$]\s*/g, '').replace(/\s*(kWh|m³|KWh|M3|kwH|KWH)\s*/gi, '').trim();
@@ -170,7 +173,9 @@ function parseSpanishNumber(value) {
     numericStr = s.replace(/[^\d\-]/g, '');
   }
   const num = Number(numericStr);
-  return isNaN(num) ? 'NaN' : String(num);
+  if (isNaN(num)) return 'NaN';
+  if (decimalPlaces !== null) return num.toFixed(decimalPlaces);
+  return String(num);
 }
 
 const MONTH_MAP = {
@@ -324,8 +329,8 @@ function parseIberdrolaElectricidad(text) {
   }
   if (m = text.match(/Consumo total de esta factura[.\s]*([\d\.]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
   else if (m = text.match(/Total:\s*([\d\.]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
-  if (m = text.match(/TOTAL[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1]); rc.total_amount_eur=[m[0]]; }
-  else if (m = text.match(/TOTAL\s*IMPORTE\s*FACTURA[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1]); rc.total_amount_eur=[m[0]]; }
+  if (m = text.match(/TOTAL[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1],2); rc.total_amount_eur=[m[0]]; }
+  else if (m = text.match(/TOTAL\s*IMPORTE\s*FACTURA[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1],2); rc.total_amount_eur=[m[0]]; }
   if (r.period_end) { const p=computePeriodMonth(r.period_end); if(p){ r.computed_year=p.year; r.computed_month=p.month; } }
   r.parse_confidence=calcConfidence(r); r.raw_candidates=rc; return r;
 }
@@ -341,7 +346,7 @@ function parseCurenergiaPvpc(text) {
   if (m = text.match(/CUPS[:\s]*([A-Z0-9]+)/im)) { const raw=m[1].trim(); r.cups_original=raw; r.cups_key=normalizeCups(raw).normalized; rc.cups=[raw]; }
   if (m = text.match(/Consumo(?: energía activa)?[:\s]*([\d\.]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
   else if (m = text.match(/Consumo total[:\s]*([\d\.]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
-  if (m = text.match(/Importe total[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1]); rc.total_amount_eur=[m[0]]; }
+  if (m = text.match(/Importe total[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1],2); rc.total_amount_eur=[m[0]]; }
   if (r.period_end) { const p=computePeriodMonth(r.period_end); if(p){ r.computed_year=p.year; r.computed_month=p.month; } }
   r.parse_confidence=calcConfidence(r); r.raw_candidates=rc; return r;
 }
@@ -358,7 +363,7 @@ function parseNaturgyReguladaElectricidad(text) {
   }
   if (m = text.match(/Código unificado de punto de suministro CUPS[:\s]*([A-Z0-9]+)/im)) { const raw=m[1].trim(); r.cups_original=raw; r.cups_key=normalizeCups(raw).normalized; rc.cups=[raw]; }
   if (m = text.match(/Su consumo en el periodo facturado ha sido\s+([\d\.]+)\s+kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
-  if (m = text.match(/TOTAL\s*IMPORTE\s*FACTURA[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1]); rc.total_amount_eur=[m[0]]; }
+  if (m = text.match(/TOTAL\s*IMPORTE\s*FACTURA[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1],2); rc.total_amount_eur=[m[0]]; }
   if (r.period_end) { const p=computePeriodMonth(r.period_end); if(p){ r.computed_year=p.year; r.computed_month=p.month; } }
   r.parse_confidence=calcConfidence(r); r.raw_candidates=rc; return r;
 }
@@ -373,8 +378,8 @@ function parseEnergiaXXiGasNatural(text) {
   if (m = text.match(/CUPS[:\s]*([A-Z0-9]+)/im)) { const raw=m[1].trim(); r.cups_original=raw; r.cups_key=normalizeCups(raw).normalized; rc.cups=[raw]; }
   if (m = text.match(/Consum\s+Total\s+([\d\.,]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
   else if (m = text.match(/Consum\s+([\d\.,]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
-  if (m = text.match(/TOTAL\s*IMPORT\s*FACTURA[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1]); rc.total_amount_eur=[m[0]]; }
-  else if (m = text.match(/IMPORT\s*FACTURA[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1]); rc.total_amount_eur=[m[0]]; }
+  if (m = text.match(/TOTAL\s*IMPORT\s*FACTURA[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1],2); rc.total_amount_eur=[m[0]]; }
+  else if (m = text.match(/IMPORT\s*FACTURA[:\s]*([\d\.,]+)\s*€/im)) { r.total_amount_eur=parseSpanishNumber(m[1],2); rc.total_amount_eur=[m[0]]; }
   if (r.period_end) { const p=computePeriodMonth(r.period_end); if(p){ r.computed_year=p.year; r.computed_month=p.month; } }
   r.parse_confidence=calcConfidence(r); r.raw_candidates=rc; return r;
 }
@@ -388,7 +393,7 @@ function parseNaturgyReguladaGasNatural(text) {
   if (m = text.match(/Código\s+CUPS[:\s]*([A-Z0-9]{20,22})/im)) { const raw=m[1].trim(); r.cups_original=raw; r.cups_key=normalizeCups(raw).normalized; rc.cups=[raw]; }
   if (m = text.match(/Consumo kWh[:\s]*([\d\.]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[1]); rc.consumption_kwh=[m[0]]; }
   else if (m = text.match(/(\d+)\s*m³\s*x\s*[\d\,\.]+\s*kWh\*\s*([\d\.]+)\s*kWh/im)) { r.consumption_kwh=parseSpanishNumber(m[2]); rc.consumption_kwh=[m[0]]; }
-  if (m = text.match(/Total\s+a\s+pagar\s+([\d\.,]+)€?/im)) { r.total_amount_eur=parseSpanishNumber(m[1]); rc.total_amount_eur=[m[0]]; }
+  if (m = text.match(/Total\s+a\s+pagar\s+([\d\.,]+)€?/im)) { r.total_amount_eur=parseSpanishNumber(m[1],2); rc.total_amount_eur=[m[0]]; }
   if (r.period_end) { const p=computePeriodMonth(r.period_end); if(p){ r.computed_year=p.year; r.computed_month=p.month; } }
   r.parse_confidence=calcConfidence(r); r.raw_candidates=rc; return r;
 }
@@ -409,7 +414,7 @@ function parseGenericInvoice(text) {
   const kwhVals = allKwh.map(m=>parseSpanishNumber(m)).filter(v=>v!=='NaN');
   if (kwhVals.length>0) { rc.consumption_kwh=allKwh.map(m=>m); r.consumption_kwh=kwhVals.reduce((a,b)=>parseFloat(b)>parseFloat(a)?b:a); }
   const allEur = text.match(/([\d\.,]+)\s*€/im)||[];
-  const eurVals = allEur.map(m=>parseSpanishNumber(m.replace(/€/g,'').trim())).filter(v=>v!=='NaN');
+  const eurVals = allEur.map(m=>parseSpanishNumber(m.replace(/€/g,'').trim(),2)).filter(v=>v!=='NaN');
   if (eurVals.length>0) { rc.total_amount_eur=allEur.map(m=>m); r.total_amount_eur=eurVals.reduce((a,b)=>parseFloat(b)>parseFloat(a)?b:a); }
   const lt = text.toLowerCase();
   if (/\b(electricidad|energ[ií]a\s+activa|potencia|kWh)\b/.test(lt)) { r.energy_type='electricidad'; rc.energy_type=['electricidad']; }
@@ -454,7 +459,7 @@ async function loadExpectedForResult(result) {
   const key = getExpectedFilename(result);
   if (expectedCache[key] !== undefined) return expectedCache[key];
   try {
-    const resp = await fetch(`../examples/parser_expected/${key}`);
+    const resp = await fetch(`/examples/parser_expected/${key}`);
     if (!resp.ok) { expectedCache[key] = null; return null; }
     expectedCache[key] = await resp.json();
     return expectedCache[key];
