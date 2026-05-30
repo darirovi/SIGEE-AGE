@@ -887,8 +887,12 @@ function addCupsEntry() {
 
 function removeCupsEntry(cupsKey) {
   if (!controlledCups[cupsKey]) return;
-  if (!saveControlledCups()) return;
   delete controlledCups[cupsKey];
+  if (!saveControlledCups()) {
+    // save failed — in-memory state is already correct, but localStorage wasn't updated
+    const errorEl = document.getElementById('cupsFormError');
+    if (errorEl) errorEl.textContent = 'Error: no se pudo guardar. ¿Está el almacenamiento lleno?';
+  }
   renderCupsModal();
   revalidateResults();
 }
