@@ -279,8 +279,23 @@ async function loadControlledCups() {
   try {
     const resp = await fetch('./sample-data/controlled-cups.json');
     const txt = await resp.text();
-    const jsonStr = txt.replace(/#.*$/gm, '').replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
-    controlledCups = JSON.parse(jsonStr);
+    // Find the LAST ```json opening (not closing ```), then the { after it.
+    // The file has a schema example (first ```json) and real data (second ```json at ## Full Data).
+    // We need the second/last ```json which contains the 23 real CUPS entries.
+    const lastJsonBlockStart = txt.lastIndexOf('```json');
+    const jsonStart = txt.indexOf('{', lastJsonBlockStart);
+    let depth = 0, jsonEnd = jsonStart;
+    for (let i = jsonStart; i < txt.length; i++) {
+      if (txt[i] === '{') depth++;
+      else if (txt[i] === '}') { depth--; if (depth === 0) { jsonEnd = i + 1; break; } }
+    }
+    const jsonStr = txt.substring(jsonStart, jsonEnd).replace(/,\s*}/g, '}');
+    const parsed = JSON.parse(jsonStr);
+    // Filter out schema-documentation entries (keys starting with '<')
+    Object.keys(parsed).forEach(k => {
+      if (k.startsWith('<')) return;
+      controlledCups[k] = parsed[k];
+    });
   } catch(e) {
     console.warn('[SIGEE] Seed load failed, using empty:', e);
     controlledCups = {};
