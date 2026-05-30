@@ -29,6 +29,10 @@ venv/
 !.vscode/settings.json
 .idea/
 
+# Herramientas de desarrollo
+.serena/
+.playwright-mcp/
+
 # Datos temporales
 .tmp/
 tmp/
